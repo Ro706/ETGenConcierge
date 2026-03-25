@@ -7,7 +7,8 @@ import {
   Tooltip, 
   ResponsiveContainer, 
   AreaChart, 
-  Area 
+  Area,
+  ReferenceLine
 } from 'recharts';
 import "./Concierge.css";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,6 +38,7 @@ interface MarketItem {
   price: string;
   change: string;
   up: boolean;
+  type?: string;
   mock?: boolean;
 }
 
@@ -61,15 +63,80 @@ interface EventItem {
   matchSectors: string[];
 }
 
+const parseMarkdown = (text: string) => {
+  const lines = text.split('\n');
+  const elements: any[] = [];
+  let listItems: any[] = [];
+
+  const flushList = () => {
+    if (listItems.length > 0) {
+      elements.push(
+        <ul key={`list-${elements.length}`} style={{ paddingLeft: '20px', margin: '8px 0', listStyleType: 'disc' }}>
+          {listItems.map((item, i) => (
+            <li key={i} style={{ marginBottom: '4px' }}>{item}</li>
+          ))}
+        </ul>
+      );
+      listItems = [];
+    }
+  };
+
+  const processInline = (line: string) => {
+    const parts = line.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} style={{ color: 'inherit', fontWeight: 'bold' }}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
+  lines.forEach((line, index) => {
+    const trimmedLine = line.trim();
+    if (trimmedLine.startsWith('### ')) {
+      flushList();
+      elements.push(
+        <h3 key={index} style={{ 
+          fontSize: '18px', 
+          fontWeight: 'bold', 
+          marginTop: '16px', 
+          marginBottom: '8px', 
+          color: 'var(--et-accent)' 
+        }}>
+          {processInline(trimmedLine.substring(4))}
+        </h3>
+      );
+    } else if (trimmedLine.startsWith('* ')) {
+      listItems.push(processInline(trimmedLine.substring(2)));
+    } else if (trimmedLine === '') {
+      flushList();
+    } else {
+      flushList();
+      elements.push(
+        <p key={index} style={{ margin: '8px 0', lineHeight: '1.6' }}>
+          {processInline(line)}
+        </p>
+      );
+    }
+  });
+
+  flushList();
+  return elements;
+};
+
 // --- Mocks ---
 const MOCK_GRAPH_DATA = [
-  { name: 'Jan', value: 4000 },
-  { name: 'Feb', value: 3000 },
-  { name: 'Mar', value: 5000 },
-  { name: 'Apr', value: 4500 },
-  { name: 'May', value: 6000 },
-  { name: 'Jun', value: 5500 },
-  { name: 'Jul', value: 7000 },
+  { name: 'Mar 15', value: 21800 },
+  { name: 'Mar 16', value: 22100 },
+  { name: 'Mar 17', value: 21950 },
+  { name: 'Mar 18', value: 22300 },
+  { name: 'Mar 19', value: 22500 },
+  { name: 'Mar 20', value: 22400 },
+  { name: 'Mar 21', value: 22800 },
+  { name: 'Mar 22', value: 23100 },
+  { name: 'Mar 23', value: 22950 },
+  { name: 'Mar 24', value: 23400 },
+  { name: 'Mar 25', value: 23200 },
 ];
 
 const MOCK_NEWS: NewsItem[] = [
@@ -82,13 +149,21 @@ const MOCK_NEWS: NewsItem[] = [
 ];
 
 const MOCK_MARKET: MarketItem[] = [
-  { name: "RELIANCE", price: "₹2,847", change: "+1.2%", up: true, mock: true },
-  { name: "TCS", price: "₹3,912", change: "+0.8%", up: true, mock: true },
-  { name: "INFY", price: "₹1,623", change: "+0.5%", up: true, mock: true },
-  { name: "HDFCBANK", price: "₹1,745", change: "+1.1%", up: true, mock: true },
-  { name: "USD/INR", price: "₹83.52", change: "-0.1%", up: false, mock: true },
-  { name: "BTC/INR", price: "₹68,42,500", change: "+2.4%", up: true, mock: true },
-  { name: "ETH/INR", price: "₹2,95,600", change: "+1.8%", up: true, mock: true }
+  { name: "RELIANCE", type: "Stock", price: "₹2,847", change: "+1.2%", up: true, mock: true },
+  { name: "TCS", type: "Stock", price: "₹3,912", change: "+0.8%", up: true, mock: true },
+  { name: "INFY", type: "Stock", price: "₹1,623", change: "+0.5%", up: true, mock: true },
+  { name: "HDFCBANK", type: "Stock", price: "₹1,745", change: "+1.1%", up: true, mock: true },
+  { name: "USD/INR", type: "Forex", price: "₹83.52", change: "-0.1%", up: false, mock: true },
+  { name: "BTC/USD", type: "Crypto", price: "$64,250", change: "+2.4%", up: true, mock: true }
+];
+
+const MOCK_WEB_NEWS: NewsItem[] = [
+  { title: "Nifty 50 closes at 23,306, up 1.72%; Shriram Finance & Trent lead gainers", source: "Business Standard", time: "Live", url: "https://www.business-standard.com" },
+  { title: "Geopolitical de-escalation: US-Iran ceasefire hopes boost global markets", source: "Financial Express", time: "1h ago", url: "https://www.financialexpress.com" },
+  { title: "Crude oil slump: Brent falls below $98, easing India's inflation concerns", source: "Economic Times", time: "2h ago", url: "https://economictimes.indiatimes.com" },
+  { title: "Sectoral Watch: Consumer Durables and Realty indices rally over 3%", source: "Upstox", time: "3h ago", url: "https://upstox.com" },
+  { title: "Market Holiday: NSE/BSE to remain closed on March 26 for Ram Navami", source: "EquityMaster", time: "4h ago", url: "https://www.equitymaster.com" },
+  { title: "IT Stocks lag behind: Demand concerns weigh on TCS and Tech Mahindra", source: "Angel One", time: "5h ago", url: "https://www.angelone.in" }
 ];
 
 const SERVICES: ServiceItem[] = [
@@ -139,7 +214,10 @@ const Index = ({ defaultSection }: IndexProps) => {
     twelveData: import.meta.env.VITE_TWELVE_DATA_KEY || ''
   });
   const [marketData, setMarketData] = useState<MarketItem[]>(MOCK_MARKET);
+  const [marketGraphData, setMarketGraphData] = useState<any[]>(MOCK_GRAPH_DATA);
+  const [marketRange, setMarketRange] = useState<{start: number, end: number, high: number, low: number} | null>(null);
   const [newsData, setNewsData] = useState<NewsItem[]>(MOCK_NEWS);
+  const [webNews, setWebNews] = useState<NewsItem[]>(MOCK_WEB_NEWS);
   const [onboardStep, setOnboardStep] = useState(0);
   const [onboardAnswers, setOnboardAnswers] = useState<Record<string, string>>({});
   const [onboardMessages, setOnboardMessages] = useState<OnboardAnswer[]>([]);
@@ -198,6 +276,7 @@ const Index = ({ defaultSection }: IndexProps) => {
   useEffect(() => {
     if (currentSection === 'dashboard') {
       fetchMarketData();
+      fetchMarketGraph();
       fetchNews();
     }
   }, [currentSection, apiKeys]);
@@ -210,9 +289,110 @@ const Index = ({ defaultSection }: IndexProps) => {
     aiMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory, isAiTyping]);
 
-  const fetchMarketData = () => {
-    const data = [...MOCK_MARKET];
-    setMarketData(data);
+  const fetchMarketData = async () => {
+    if (!apiKeys.twelveData) {
+      setMarketData(MOCK_MARKET);
+      return;
+    }
+
+    try {
+      const symbols = "RELIANCE:NSE,TCS:NSE,INFY:NSE,HDFCBANK:NSE,USD/INR,BTC/USD";
+      const r = await fetch(`https://api.twelvedata.com/quote?symbol=${symbols}&apikey=${apiKeys.twelveData}`);
+      const data = await r.json();
+
+      const updated: MarketItem[] = [];
+      
+      // The API might return an object with symbols as keys or an array if multiple symbols
+      const quotes = data.status === 'error' ? null : data;
+      
+      if (quotes) {
+        Object.keys(quotes).forEach(sym => {
+          const q = quotes[sym];
+          if (q && q.symbol) {
+            const symUpper = q.symbol.toUpperCase();
+            let type = "Stock";
+            if (symUpper.includes("USD/INR")) type = "Forex";
+            else if (symUpper.includes("BTC/USD")) type = "Crypto";
+
+            updated.push({
+              name: q.symbol.split(':')[0],
+              type,
+              price: (q.currency === 'INR' || q.symbol.includes('INR')) ? `₹${parseFloat(q.close).toLocaleString('en-IN')}` : `$${parseFloat(q.close).toLocaleString()}`,
+              change: `${parseFloat(q.percent_change) >= 0 ? '+' : ''}${parseFloat(q.percent_change).toFixed(2)}%`,
+              up: parseFloat(q.percent_change) >= 0
+            });
+          }
+        });
+      }
+
+      if (updated.length > 0) {
+        setMarketData(updated);
+      } else {
+        setMarketData(MOCK_MARKET);
+      }
+    } catch (error) {
+      console.error("Error fetching market data:", error);
+      setMarketData(MOCK_MARKET);
+    }
+  };
+
+  const fetchMarketGraph = async () => {
+    try {
+      // Using Yahoo Finance for Nifty 50 Intraday (1m interval, 1d range)
+      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEI?interval=5m&range=1d`);
+      const data = await r.json();
+
+      if (data.chart && data.chart.result && data.chart.result[0]) {
+        const result = data.chart.result[0];
+        const timestamps = result.timestamp;
+        const quotes = result.indicators.quote[0].close;
+
+        if (timestamps && quotes) {
+          const graph = timestamps.map((t: number, i: number) => {
+            const date = new Date(t * 1000);
+            return {
+              name: date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+              value: Math.round(quotes[i] * 100) / 100
+            };
+          }).filter((v: any) => v.value !== null); // Filter out any null values
+
+          // To keep the graph clean, we'll take every 5th or 10th point if there are too many,
+          // but since we used interval=5m, it should be fine.
+          setMarketGraphData(graph);
+          
+          if (graph.length > 0) {
+            const values = graph.map(v => v.value);
+            setMarketRange({
+              start: graph[0].value,
+              end: graph[graph.length - 1].value,
+              high: Math.max(...values),
+              low: Math.min(...values)
+            });
+          }
+          return;
+        }
+      }
+      
+      // Fallback to Twelve Data if Yahoo fails or for other assets
+      if (apiKeys.twelveData) {
+        const symbol = "NIFTY:NSE"; 
+        const r2 = await fetch(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1day&outputsize=12&apikey=${apiKeys.twelveData}`);
+        const data2 = await r2.json();
+
+        if (data2.values && data2.values.length > 0) {
+          const graph = data2.values.reverse().map((v: any) => ({
+            name: new Date(v.datetime).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
+            value: parseFloat(v.close)
+          }));
+          setMarketGraphData(graph);
+        }
+      } else {
+        setMarketGraphData(MOCK_GRAPH_DATA);
+      }
+    } catch (error) {
+      console.error("Error fetching graph data:", error);
+      setMarketGraphData(MOCK_GRAPH_DATA);
+    }
   };
 
   const fetchNews = async () => {
@@ -531,7 +711,9 @@ const Index = ({ defaultSection }: IndexProps) => {
               <div className="chat-messages">
                 {onboardMessages.map((m, i) => (
                   <div key={i} style={{display: 'flex', flexDirection: 'column'}}>
-                    <div className={`chat-msg ${m.type}`}>{m.text}</div>
+                    <div className={`chat-msg ${m.type}`}>
+                      {m.type === 'bot' ? parseMarkdown(m.text) : m.text}
+                    </div>
                     {m.options && (
                       <div className="quick-replies">
                         {m.options.map((opt: string) => (
@@ -599,51 +781,127 @@ const Index = ({ defaultSection }: IndexProps) => {
                 <div className="goals-tags" style={{display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px'}}>
                   {(userProfile?.goals || '').split(',').map(g => g.trim()).filter(Boolean).map(g => <span key={g} className="goal-tag" style={{background: 'rgba(37,99,235,0.1)', color: 'var(--et-accent)', padding: '4px 10px', borderRadius: '8px', fontSize: '11px'}}>{g}</span>)}
                 </div>
-                <p style={{fontSize: '14px', color: 'var(--et-text-secondary)'}}>{userProfile?.summary}</p>
+                <p style={{fontSize: '14px', color: 'var(--et-text-secondary)', marginBottom: '16px'}}>{userProfile?.summary}</p>
+                
+                {userProfile?.recommendations && userProfile.recommendations.length > 0 && (
+                  <div style={{marginTop: '16px', borderTop: '1px solid var(--et-border-color)', paddingTop: '16px'}}>
+                    <div style={{fontSize: '12px', fontWeight: 'bold', color: 'var(--et-accent)', marginBottom: '8px', textTransform: 'uppercase'}}>Top Recommendations</div>
+                    <ul style={{padding: 0, margin: 0, listStyle: 'none'}}>
+                      {userProfile.recommendations.map((rec, i) => (
+                        <li key={i} style={{fontSize: '13px', color: 'white', marginBottom: '8px', display: 'flex', gap: '8px', alignItems: 'flex-start'}}>
+                          <span style={{color: 'var(--et-success)'}}>•</span>
+                          {rec}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <button onClick={clearProfile} style={{color: 'var(--et-accent-secondary)', fontSize: '13px', marginTop: '12px', background: 'none'}}>↻ Reset</button>
               </div>
 
               {/* Analysis Graph */}
               <div className="chart-card card-common">
-                <h3>Portfolio Analysis</h3>
-                <div style={{ width: '100%', height: '100%' }}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+                  <h3 style={{margin: 0}}>Market Sentiment (Live)</h3>
+                  <div style={{fontSize: '12px', color: 'var(--et-text-secondary)'}}>Symbol: NIFTY 50 (Proxy)</div>
+                </div>
+
+                {marketRange && (
+                  <div style={{display: 'flex', gap: '16px', marginBottom: '16px', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '8px', fontSize: '11px'}}>
+                    <div style={{flex: 1}}>
+                      <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>OPEN (Start)</div>
+                      <div style={{fontWeight: 'bold', color: 'white'}}>₹{marketRange.start.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div style={{flex: 1}}>
+                      <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>LAST (End)</div>
+                      <div style={{fontWeight: 'bold', color: 'white'}}>₹{marketRange.end.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div style={{flex: 1}}>
+                      <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>DAY HIGH</div>
+                      <div style={{fontWeight: 'bold', color: 'var(--et-success)'}}>₹{marketRange.high.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div style={{flex: 1}}>
+                      <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>DAY LOW</div>
+                      <div style={{fontWeight: 'bold', color: 'var(--et-danger)'}}>₹{marketRange.low.toLocaleString('en-IN')}</div>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ width: '100%', height: marketRange ? 'calc(100% - 100px)' : 'calc(100% - 40px)' }}>
                   <ResponsiveContainer>
-                    <AreaChart data={MOCK_GRAPH_DATA}>
+                    <AreaChart data={marketGraphData}>
                       <defs>
                         <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="var(--et-success)" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="var(--et-success)" stopOpacity={0}/>
                         </linearGradient>
+                        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="3" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
                       <XAxis 
                         dataKey="name" 
                         axisLine={false} 
                         tickLine={false} 
-                        tick={{fill: 'var(--et-text-secondary)', fontSize: 12}} 
+                        tick={{fill: 'var(--et-text-secondary)', fontSize: 10}} 
+                        minTickGap={20}
                       />
                       <YAxis 
                         axisLine={false} 
                         tickLine={false} 
-                        tick={{fill: 'var(--et-text-secondary)', fontSize: 12}} 
+                        domain={['auto', 'auto']}
+                        tick={{fill: 'var(--et-text-secondary)', fontSize: 10}}
+                        hide={false}
                       />
                       <Tooltip 
                         contentStyle={{
-                          backgroundColor: '#112240',
+                          backgroundColor: '#0D1B2A',
                           borderRadius: '8px', 
-                          border: '1px solid rgba(255,255,255,0.1)', 
-                          boxShadow: 'var(--et-shadow)',
-                          color: '#F0F4FF'
+                          border: '1px solid var(--et-success)', 
+                          boxShadow: '0 0 15px rgba(16,185,129,0.1)',
+                          color: '#F0F4FF',
+                          fontSize: '12px'
                         }}
-                        itemStyle={{ color: '#10B981' }}
+                        itemStyle={{ color: 'var(--et-success)', fontWeight: 'bold' }}
+                        cursor={{ stroke: 'var(--et-success)', strokeWidth: 1 }}
                       />
+                      {marketRange && (
+                        <ReferenceLine 
+                          y={marketRange.start} 
+                          stroke="rgba(255,255,255,0.2)" 
+                          strokeDasharray="3 3"
+                          label={{ position: 'right', value: 'Open', fill: 'rgba(255,255,255,0.4)', fontSize: 10 }} 
+                        />
+                      )}
                       <Area 
                         type="monotone" 
                         dataKey="value" 
-                        stroke="#10B981" 
-                        strokeWidth={3} 
+                        stroke="var(--et-success)" 
+                        strokeWidth={2} 
                         fillOpacity={1} 
                         fill="url(#colorValue)" 
+                        filter="url(#glow)"
+                        animationDuration={1500}
+                        dot={(props: any) => {
+                          const { cx, cy, index } = props;
+                          if (index === 0 || index === marketGraphData.length - 1) {
+                            return (
+                              <circle 
+                                key={index} 
+                                cx={cx} 
+                                cy={cy} 
+                                r={4} 
+                                fill="var(--et-accent)" 
+                                stroke="white" 
+                                strokeWidth={1} 
+                              />
+                            );
+                          }
+                          return <></>;
+                        }}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -652,13 +910,35 @@ const Index = ({ defaultSection }: IndexProps) => {
 
               {/* Markets */}
               <div style={{gridColumn: '1 / -1'}}>
-                <h3 style={{marginBottom: '16px'}}>Live Market Snapshot</h3>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+                  <h3 style={{margin: 0}}>Live Market Snapshot</h3>
+                  <button 
+                    onClick={() => { fetchMarketData(); fetchMarketGraph(); showToast("Market data updated"); }}
+                    style={{fontSize: '12px', color: 'var(--et-accent)', background: 'rgba(249,115,22,0.1)', border: '1px solid var(--et-accent)', borderRadius: '4px', padding: '4px 12px', cursor: 'pointer'}}
+                  >
+                    Refresh Data
+                  </button>
+                </div>
                 <div className="market-grid">
                   {marketData.map((d, i) => (
-                    <div key={i} className="market-card">
-                      <div className="label">{d.name}</div>
-                      <div className="price">{d.price}</div>
-                      <div className="change" style={{color: d.up ? 'var(--et-success)' : 'var(--et-danger)', fontWeight: '600'}}>{d.change}</div>
+                    <div key={i} className="market-card" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px'}}>
+                      <div className="label" style={{fontWeight: 'bold', fontSize: '14px'}}>{d.name}</div>
+                      {d.type && (
+                        <div style={{
+                          fontSize: '10px', 
+                          background: 'rgba(255,255,255,0.1)', 
+                          padding: '2px 8px', 
+                          borderRadius: '10px', 
+                          color: 'var(--et-text-secondary)',
+                          marginBottom: '4px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}>
+                          {d.type}
+                        </div>
+                      )}
+                      <div className="price" style={{fontSize: '18px', fontWeight: 'bold'}}>{d.price}</div>
+                      <div className="change" style={{color: d.up ? 'var(--et-success)' : 'var(--et-danger)', fontWeight: '600', fontSize: '13px'}}>{d.change}</div>
                     </div>
                   ))}
                 </div>
@@ -673,6 +953,25 @@ const Index = ({ defaultSection }: IndexProps) => {
                       <h4 style={{fontSize: '15px', marginBottom: '8px'}}>{a.title}</h4>
                       <div style={{fontSize: '12px', color: 'var(--et-text-secondary)'}}>{a.source} · {a.time}</div>
                       <a href={a.url} target="_blank" style={{marginTop: '12px', fontSize: '13px'}}>Read More →</a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Web Scraped News */}
+              <div style={{gridColumn: '1 / -1'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+                  <h3 style={{margin: 0}}>Latest from the Web (Live)</h3>
+                  <div style={{fontSize: '11px', color: 'var(--et-accent)', background: 'rgba(249,115,22,0.1)', padding: '2px 8px', borderRadius: '4px'}}>Market Pulse</div>
+                </div>
+                <div className="news-grid">
+                  {webNews.map((a, i) => (
+                    <div key={i} className="news-card" style={{borderLeft: '3px solid var(--et-accent)'}}>
+                      <h4 style={{fontSize: '14px', marginBottom: '8px', lineHeight: '1.4'}}>{a.title}</h4>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto'}}>
+                        <div style={{fontSize: '11px', color: 'var(--et-text-secondary)'}}>{a.source} · {a.time}</div>
+                        <a href={a.url} target="_blank" style={{fontSize: '11px', color: 'var(--et-accent)', fontWeight: '600'}}>Source ↗</a>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -705,7 +1004,7 @@ const Index = ({ defaultSection }: IndexProps) => {
                           color: m.role === 'user' ? 'white' : '#CCD6F6'
                         }}
                       >
-                        {m.content}
+                        {m.role === 'assistant' ? parseMarkdown(m.content) : m.content}
                       </div>
                     ))}
                     {isAiTyping && <p style={{fontSize: '12px', color: 'var(--et-text-secondary)'}}>AI is typing...</p>}
@@ -754,6 +1053,21 @@ const Index = ({ defaultSection }: IndexProps) => {
                    <div style={{color: d.up ? 'var(--et-success)' : 'var(--et-danger)'}}>{d.change}</div>
                  </div>
                ))}
+             </div>
+
+             <div style={{marginTop: '48px'}}>
+                <h3 style={{marginBottom: '16px'}}>Latest Market Pulse (Web)</h3>
+                <div className="news-grid">
+                  {webNews.map((a, i) => (
+                    <div key={i} className="news-card" style={{borderLeft: '3px solid var(--et-accent)'}}>
+                      <h4 style={{fontSize: '14px', marginBottom: '8px', lineHeight: '1.4'}}>{a.title}</h4>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto'}}>
+                        <div style={{fontSize: '11px', color: 'var(--et-text-secondary)'}}>{a.source} · {a.time}</div>
+                        <a href={a.url} target="_blank" style={{fontSize: '11px', color: 'var(--et-accent)', fontWeight: '600'}}>Source ↗</a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
              </div>
           </div>
         </div>

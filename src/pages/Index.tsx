@@ -124,6 +124,58 @@ const parseMarkdown = (text: string) => {
   return elements;
 };
 
+const FinancialHealthRings = ({ scores }: { scores: Record<string, number> }) => {
+  const categories = [
+    { label: 'Savings', key: 'savings', color: '#10B981' },
+    { label: 'Investments', key: 'investment', color: '#3B82F6' },
+    { label: 'Risk', key: 'risk', color: '#F59E0B' },
+    { label: 'Goals', key: 'goals', color: '#8B5CF6' },
+    { label: 'Overall', key: 'overall', color: '#F97316' }
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center', margin: '20px 0' }}>
+      {categories.map((cat, i) => {
+        const radius = 35;
+        const circumference = 2 * Math.PI * radius;
+        const offset = circumference - (scores[cat.key] / 100) * circumference;
+        
+        return (
+          <div key={cat.key} style={{ textAlign: 'center', position: 'relative' }}>
+            <svg width="100" height="100" style={{ transform: 'rotate(-90deg)' }}>
+              <circle
+                cx="50" cy="50" r={radius}
+                fill="transparent"
+                stroke="rgba(255,255,255,0.05)"
+                strokeWidth="8"
+              />
+              <circle
+                cx="50" cy="50" r={radius}
+                fill="transparent"
+                stroke={cat.color}
+                strokeWidth="8"
+                strokeDasharray={circumference}
+                style={{ 
+                  strokeDashoffset: offset, 
+                  transition: `stroke-dashoffset 1.5s ease-out ${i * 0.2}s`,
+                  strokeLinecap: 'round'
+                }}
+              />
+            </svg>
+            <div style={{ 
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              fontSize: '14px', fontWeight: 'bold'
+            }}>
+              {Math.round(scores[cat.key])}%
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--et-text-secondary)', marginTop: '4px' }}>{cat.label}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 // --- Mocks ---
 const MOCK_GRAPH_DATA = [
   { name: 'Mar 15', value: 21800 },
@@ -228,6 +280,10 @@ const Index = ({ defaultSection }: IndexProps) => {
   const [aiInput, setAiInput] = useState("");
   const [isAiTyping, setIsAiTyping] = useState(false);
   const [relevanceNotes, setRelevanceNotes] = useState<Record<number, string>>({});
+  const [dailyAction, setDailyAction] = useState<string>("");
+  const [healthScores, setHealthScores] = useState<Record<string, number>>({ savings: 0, investment: 0, risk: 0, goals: 0, overall: 0 });
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [briefingScript, setBriefingScript] = useState("");
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
@@ -274,10 +330,12 @@ const Index = ({ defaultSection }: IndexProps) => {
   }, [defaultSection]);
 
   useEffect(() => {
-    if (currentSection === 'dashboard') {
+    if (currentSection === 'dashboard' && userProfile) {
       fetchMarketData();
       fetchMarketGraph();
       fetchNews();
+      calculateHealthScores(userProfile);
+      generateDailyAction(userProfile);
     }
   }, [currentSection, apiKeys]);
 
@@ -288,6 +346,68 @@ const Index = ({ defaultSection }: IndexProps) => {
   useEffect(() => {
     aiMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory, isAiTyping]);
+
+  const calculateHealthScores = (profile: UserProfile) => {
+    const scores = { savings: 0, investment: 0, risk: 0, goals: 0, overall: 0 };
+    
+    // Simple logic based on profile strings
+    if (profile.investments.includes("Active")) scores.investment = 90;
+    else if (profile.investments.includes("Mutual")) scores.investment = 70;
+    else scores.investment = 40;
+
+    if (profile.risk === "Conservative") scores.risk = 40;
+    else if (profile.risk === "Moderate") scores.risk = 70;
+    else scores.risk = 90;
+
+    const goalCount = (profile.goals || "").split(",").length;
+    scores.goals = Math.min(goalCount * 25, 100);
+
+    scores.savings = profile.type === "Student" ? 50 : 80;
+    
+    scores.overall = Math.round((scores.savings + scores.investment + scores.risk + scores.goals) / 4);
+    
+    setHealthScores(scores);
+  };
+
+  const generateDailyAction = async (profile: UserProfile) => {
+    if (!apiKeys.gemini) return;
+    const today = new Date().toDateString();
+    
+    const prompt = `Today is ${today}. User Profile: ${JSON.stringify(profile)}. 
+    Give ONE specific, actionable financial nudge for today in under 25 words. Be direct and personal.`;
+    
+    const action = await callGemini(prompt, "You are a concise financial coach.");
+    if (action) setDailyAction(action.trim());
+  };
+
+  const toggleBriefing = async () => {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    if (!briefingScript) {
+      const prompt = `Generate a 60-second personalized morning financial briefing for ${userProfile?.name}. 
+      Include a greeting, a quick market summary based on Nifty 50 at ${marketRange?.end || 'current levels'}, 
+      and a personal recommendation based on their goal of ${userProfile?.goals}. Keep it energetic and professional.`;
+      
+      const script = await callGemini(prompt, "You are an ET Markets news anchor.");
+      if (script) {
+        setBriefingScript(script);
+        speak(script);
+      }
+    } else {
+      speak(briefingScript);
+    }
+  };
+
+  const speak = (text: string) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onstart = () => setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
 
   const fetchMarketData = async () => {
     if (!apiKeys.twelveData) {
@@ -767,6 +887,55 @@ const Index = ({ defaultSection }: IndexProps) => {
           </nav>
 
           <div className="container">
+            {/* Daily Action Nudge */}
+            <div className="card-common" style={{ 
+              gridColumn: '1 / -1', 
+              marginBottom: '24px', 
+              background: 'linear-gradient(135deg, #112240 0%, #1a365d 100%)',
+              border: '1px solid var(--et-accent)',
+              padding: '20px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              boxShadow: '0 10px 30px -15px rgba(2,12,27,0.7)'
+            }}>
+              <div>
+                <div style={{ fontSize: '12px', color: 'var(--et-accent)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  What should I do today?
+                </div>
+                <h2 style={{ margin: 0, fontSize: '20px', color: 'white' }}>
+                  {dailyAction || "Analyzing the markets for your personal nudge..."}
+                </h2>
+              </div>
+              <button 
+                onClick={toggleBriefing}
+                style={{
+                  background: isSpeaking ? 'var(--et-danger)' : 'var(--et-accent)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '50px',
+                  padding: '12px 24px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'transform 0.2s'
+                }}
+                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                {isSpeaking ? '⏹ Stop Briefing' : '🔊 Morning Briefing'}
+              </button>
+            </div>
+
+            {/* Financial Health Score Section */}
+            <div className="card-common" style={{ gridColumn: '1 / -1', marginBottom: '24px', textAlign: 'center' }}>
+              <h3 style={{ marginBottom: '8px' }}>Your Financial Health Score</h3>
+              <p style={{ fontSize: '14px', color: 'var(--et-text-secondary)', marginBottom: '20px' }}>Based on your personal profile and goals</p>
+              <FinancialHealthRings scores={healthScores} />
+            </div>
+
             <div className="dash-grid">
               {/* Profile Card */}
               <div className="profile-card card-common">

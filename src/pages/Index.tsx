@@ -141,32 +141,34 @@ const FinancialHealthRings = ({ scores }: { scores: Record<string, number> }) =>
         const offset = circumference - (scores[cat.key] / 100) * circumference;
         
         return (
-          <div key={cat.key} style={{ textAlign: 'center', position: 'relative' }}>
-            <svg width="100" height="100" style={{ transform: 'rotate(-90deg)' }}>
-              <circle
-                cx="50" cy="50" r={radius}
-                fill="transparent"
-                stroke="rgba(255,255,255,0.05)"
-                strokeWidth="8"
-              />
-              <circle
-                cx="50" cy="50" r={radius}
-                fill="transparent"
-                stroke={cat.color}
-                strokeWidth="8"
-                strokeDasharray={circumference}
-                style={{ 
-                  strokeDashoffset: offset, 
-                  transition: `stroke-dashoffset 1.5s ease-out ${i * 0.2}s`,
-                  strokeLinecap: 'round'
-                }}
-              />
-            </svg>
-            <div style={{ 
-              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-              fontSize: '14px', fontWeight: 'bold'
-            }}>
-              {Math.round(scores[cat.key])}%
+          <div key={cat.key} style={{ textAlign: 'center' }}>
+            <div style={{ position: 'relative', width: '100px', height: '100px', margin: '0 auto' }}>
+              <svg width="100" height="100" style={{ transform: 'rotate(-90deg)' }}>
+                <circle
+                  cx="50" cy="50" r={radius}
+                  fill="transparent"
+                  stroke="rgba(255,255,255,0.05)"
+                  strokeWidth="8"
+                />
+                <circle
+                  cx="50" cy="50" r={radius}
+                  fill="transparent"
+                  stroke={cat.color}
+                  strokeWidth="8"
+                  strokeDasharray={circumference}
+                  style={{ 
+                    strokeDashoffset: offset, 
+                    transition: `stroke-dashoffset 1.5s ease-out ${i * 0.2}s`,
+                    strokeLinecap: 'round'
+                  }}
+                />
+              </svg>
+              <div style={{ 
+                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                fontSize: '14px', fontWeight: 'bold'
+              }}>
+                {Math.round(scores[cat.key])}%
+              </div>
             </div>
             <div style={{ fontSize: '12px', color: 'var(--et-text-secondary)', marginTop: '4px' }}>{cat.label}</div>
           </div>
@@ -178,17 +180,17 @@ const FinancialHealthRings = ({ scores }: { scores: Record<string, number> }) =>
 
 // --- Mocks ---
 const MOCK_GRAPH_DATA = [
-  { name: 'Mar 15', value: 21800 },
-  { name: 'Mar 16', value: 22100 },
-  { name: 'Mar 17', value: 21950 },
-  { name: 'Mar 18', value: 22300 },
-  { name: 'Mar 19', value: 22500 },
-  { name: 'Mar 20', value: 22400 },
-  { name: 'Mar 21', value: 22800 },
-  { name: 'Mar 22', value: 23100 },
-  { name: 'Mar 23', value: 22950 },
-  { name: 'Mar 24', value: 23400 },
-  { name: 'Mar 25', value: 23200 },
+  { name: 'Mar 15', value: 21800, gain: 0, percentage: 0 },
+  { name: 'Mar 16', value: 22100, gain: 300, percentage: 1.38 },
+  { name: 'Mar 17', value: 21950, gain: 150, percentage: 0.69 },
+  { name: 'Mar 18', value: 22300, gain: 500, percentage: 2.29 },
+  { name: 'Mar 19', value: 22500, gain: 700, percentage: 3.21 },
+  { name: 'Mar 20', value: 22400, gain: 600, percentage: 2.75 },
+  { name: 'Mar 21', value: 22800, gain: 1000, percentage: 4.59 },
+  { name: 'Mar 22', value: 22912.4, gain: 1112.4, percentage: 5.10 },
+  { name: 'Mar 23', value: 22950, gain: 1150, percentage: 5.28 },
+  { name: 'Mar 24', value: 23400, gain: 1600, percentage: 7.34 },
+  { name: 'Mar 25', value: 23306.45, gain: 1506.45, percentage: 6.91 },
 ];
 
 const MOCK_NEWS: NewsItem[] = [
@@ -293,6 +295,13 @@ const Index = ({ defaultSection }: IndexProps) => {
   
   const hasCheckedInitialRedirect = useRef(false);
 
+  const [isMarketLoading, setIsMarketLoading] = useState(true);
+  const [isNewsLoading, setIsNewsLoading] = useState(true);
+
+  const Skeleton = ({ width, height, style }: { width?: string, height?: string, style?: any }) => (
+    <div className="skeleton" style={{ width: width || '100%', height: height || '20px', borderRadius: '4px', ...style }}></div>
+  );
+
   useEffect(() => {
     if (!defaultSection && user && !authLoading && !hasCheckedInitialRedirect.current) {
       hasCheckedInitialRedirect.current = true;
@@ -329,6 +338,8 @@ const Index = ({ defaultSection }: IndexProps) => {
     return () => clearInterval(interval);
   }, [defaultSection]);
 
+  const [isBriefingLoading, setIsBriefingLoading] = useState(false);
+
   useEffect(() => {
     if (currentSection === 'dashboard' && userProfile) {
       fetchMarketData();
@@ -336,15 +347,22 @@ const Index = ({ defaultSection }: IndexProps) => {
       fetchNews();
       calculateHealthScores(userProfile);
       generateDailyAction(userProfile);
+      pregenerateBriefing(userProfile);
     }
-  }, [currentSection, apiKeys]);
+  }, [currentSection, apiKeys, userProfile]);
 
   useEffect(() => {
     onboardMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [onboardMessages]);
 
+  const hasInitialChatScroll = useRef(false);
   useEffect(() => {
-    aiMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatHistory.length > 0 && hasInitialChatScroll.current) {
+      aiMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    if (chatHistory.length > 0) {
+      hasInitialChatScroll.current = true;
+    }
   }, [chatHistory, isAiTyping]);
 
   const calculateHealthScores = (profile: UserProfile) => {
@@ -370,14 +388,46 @@ const Index = ({ defaultSection }: IndexProps) => {
   };
 
   const generateDailyAction = async (profile: UserProfile) => {
-    if (!apiKeys.gemini) return;
     const today = new Date().toDateString();
+    const cacheKey = `et_nudge_${today}`;
+    const cached = localStorage.getItem(cacheKey);
+    
+    if (cached) {
+      setDailyAction(cached);
+      return;
+    }
+
+    if (!apiKeys.gemini) return;
     
     const prompt = `Today is ${today}. User Profile: ${JSON.stringify(profile)}. 
     Give ONE specific, actionable financial nudge for today in under 25 words. Be direct and personal.`;
     
     const action = await callGemini(prompt, "You are a concise financial coach.");
-    if (action) setDailyAction(action.trim());
+    if (action) {
+      const trimmed = action.trim();
+      setDailyAction(trimmed);
+      localStorage.setItem(cacheKey, trimmed);
+    }
+  };
+
+  const pregenerateBriefing = async (profile: UserProfile) => {
+    const today = new Date().toDateString();
+    const cacheKey = `et_briefing_${today}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      setBriefingScript(cached);
+      return;
+    }
+
+    if (!apiKeys.gemini) return;
+    const prompt = `Generate a concise 45-second personalized morning financial briefing for ${profile.name}. 
+    Include a warm greeting, a quick market sentiment summary, and one personal recommendation based on their goal: ${profile.goals}.`;
+    
+    const script = await callGemini(prompt, "You are a professional ET Markets news anchor. Be concise.");
+    if (script) {
+      setBriefingScript(script);
+      localStorage.setItem(cacheKey, script);
+    }
   };
 
   const toggleBriefing = async () => {
@@ -388,13 +438,16 @@ const Index = ({ defaultSection }: IndexProps) => {
     }
 
     if (!briefingScript) {
+      setIsBriefingLoading(true);
+      const today = new Date().toDateString();
       const prompt = `Generate a 60-second personalized morning financial briefing for ${userProfile?.name}. 
-      Include a greeting, a quick market summary based on Nifty 50 at ${marketRange?.end || 'current levels'}, 
-      and a personal recommendation based on their goal of ${userProfile?.goals}. Keep it energetic and professional.`;
+      Include a greeting, a quick market summary, and a personal recommendation based on their goal of ${userProfile?.goals}.`;
       
       const script = await callGemini(prompt, "You are an ET Markets news anchor.");
+      setIsBriefingLoading(false);
       if (script) {
         setBriefingScript(script);
+        localStorage.setItem(`et_briefing_${today}`, script);
         speak(script);
       }
     } else {
@@ -410,19 +463,26 @@ const Index = ({ defaultSection }: IndexProps) => {
   };
 
   const fetchMarketData = async () => {
+    setIsMarketLoading(true);
     if (!apiKeys.twelveData) {
       setMarketData(MOCK_MARKET);
+      setPreviousClose(22912.4);
+      setMarketRange({
+        start: MOCK_GRAPH_DATA[0].value,
+        end: MOCK_GRAPH_DATA[MOCK_GRAPH_DATA.length - 1].value,
+        high: Math.max(...MOCK_GRAPH_DATA.map(v => v.value)),
+        low: Math.min(...MOCK_GRAPH_DATA.map(v => v.value))
+      });
+      setIsMarketLoading(false);
       return;
     }
 
     try {
-      const symbols = "RELIANCE:NSE,TCS:NSE,INFY:NSE,HDFCBANK:NSE,USD/INR,BTC/USD";
+      const symbols = "RELIANCE:NSE,TCS:NSE,INFY:NSE,HDFCBANK:NSE,USD/INR,BTC/USD,NIFTY:NSE";
       const r = await fetch(`https://api.twelvedata.com/quote?symbol=${symbols}&apikey=${apiKeys.twelveData}`);
       const data = await r.json();
 
       const updated: MarketItem[] = [];
-      
-      // The API might return an object with symbols as keys or an array if multiple symbols
       const quotes = data.status === 'error' ? null : data;
       
       if (quotes) {
@@ -430,6 +490,12 @@ const Index = ({ defaultSection }: IndexProps) => {
           const q = quotes[sym];
           if (q && q.symbol) {
             const symUpper = q.symbol.toUpperCase();
+            
+            // Set previous close for graph if this is NIFTY
+            if (symUpper.includes("NIFTY")) {
+              setPreviousClose(parseFloat(q.previous_close));
+            }
+
             let type = "Stock";
             if (symUpper.includes("USD/INR")) type = "Forex";
             else if (symUpper.includes("BTC/USD")) type = "Crypto";
@@ -445,78 +511,101 @@ const Index = ({ defaultSection }: IndexProps) => {
         });
       }
 
-      if (updated.length > 0) {
-        setMarketData(updated);
-      } else {
-        setMarketData(MOCK_MARKET);
-      }
+      if (updated.length > 0) setMarketData(updated);
+      else setMarketData(MOCK_MARKET);
     } catch (error) {
       console.error("Error fetching market data:", error);
       setMarketData(MOCK_MARKET);
+    } finally {
+      setIsMarketLoading(false);
     }
   };
 
+  const [previousClose, setPreviousClose] = useState<number | null>(22912.4);
+
   const fetchMarketGraph = async () => {
+    // Check cache first to avoid too many requests
+    const today = new Date().toDateString();
+    const cacheKey = `et_market_graph_${today}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      setMarketGraphData(parsed.data);
+      setPreviousClose(parsed.prev);
+      setMarketRange(parsed.range);
+      return;
+    }
+
     try {
-      // Using Yahoo Finance for Nifty 50 Intraday (1m interval, 1d range)
-      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEI?interval=5m&range=1d`);
-      const data = await r.json();
+      // Prioritize Twelve Data for browser-friendly calls (no CORS issues like Yahoo)
+      if (apiKeys.twelveData) {
+        const symbol = "NIFTY:NSE"; 
+        const r2 = await fetch(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1h&outputsize=40&apikey=${apiKeys.twelveData}`);
+        const data2 = await r2.json();
 
-      if (data.chart && data.chart.result && data.chart.result[0]) {
-        const result = data.chart.result[0];
-        const timestamps = result.timestamp;
-        const quotes = result.indicators.quote[0].close;
-
-        if (timestamps && quotes) {
-          const graph = timestamps.map((t: number, i: number) => {
-            const date = new Date(t * 1000);
+        if (data2.values && data2.values.length > 0) {
+          const baselineVal = previousClose || parseFloat(data2.values[data2.values.length - 1].close);
+          const graph = data2.values.reverse().map((v: any) => {
+            const val = parseFloat(v.close);
+            const diff = val - baselineVal;
+            const pct = (diff / baselineVal) * 100;
             return {
-              name: date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-              value: Math.round(quotes[i] * 100) / 100
+              name: new Date(v.datetime).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit' }),
+              value: val,
+              gain: diff,
+              percentage: pct
             };
-          }).filter((v: any) => v.value !== null); // Filter out any null values
-
-          // To keep the graph clean, we'll take every 5th or 10th point if there are too many,
-          // but since we used interval=5m, it should be fine.
+          });
           setMarketGraphData(graph);
           
-          if (graph.length > 0) {
-            const values = graph.map(v => v.value);
-            setMarketRange({
-              start: graph[0].value,
-              end: graph[graph.length - 1].value,
-              high: Math.max(...values),
-              low: Math.min(...values)
-            });
-          }
+          const values = graph.map(v => v.value);
+          const range = {
+            start: graph[0].value,
+            end: graph[graph.length - 1].value,
+            high: Math.max(...values),
+            low: Math.min(...values)
+          };
+          setMarketRange(range);
+          
+          // Cache results
+          localStorage.setItem(cacheKey, JSON.stringify({ data: graph, prev: baselineVal, range }));
           return;
         }
       }
       
-      // Fallback to Twelve Data if Yahoo fails or for other assets
-      if (apiKeys.twelveData) {
-        const symbol = "NIFTY:NSE"; 
-        const r2 = await fetch(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1day&outputsize=12&apikey=${apiKeys.twelveData}`);
-        const data2 = await r2.json();
-
-        if (data2.values && data2.values.length > 0) {
-          const graph = data2.values.reverse().map((v: any) => ({
-            name: new Date(v.datetime).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
-            value: parseFloat(v.close)
-          }));
-          setMarketGraphData(graph);
-        }
-      } else {
-        setMarketGraphData(MOCK_GRAPH_DATA);
-      }
+      // Fallback: If no Twelve Data key or it failed, try a proxy for Yahoo Finance or use Mock
+      setMarketGraphData(MOCK_GRAPH_DATA);
+      setPreviousClose(22912.4);
+      setMarketRange({
+        start: MOCK_GRAPH_DATA[0].value,
+        end: MOCK_GRAPH_DATA[MOCK_GRAPH_DATA.length - 1].value,
+        high: Math.max(...MOCK_GRAPH_DATA.map(v => v.value)),
+        low: Math.min(...MOCK_GRAPH_DATA.map(v => v.value))
+      });
     } catch (error) {
       console.error("Error fetching graph data:", error);
       setMarketGraphData(MOCK_GRAPH_DATA);
+      setPreviousClose(22912.4);
     }
   };
 
   const fetchNews = async () => {
+    // Check cache to avoid 429
+    const today = new Date().toDateString();
+    const cacheKey = `et_news_${today}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      setNewsData(parsed.news);
+      setRelevanceNotes(parsed.notes);
+      setIsNewsLoading(false);
+      return;
+    }
+
+    setIsNewsLoading(true);
     let articles = MOCK_NEWS;
+    let aiNotes: Record<number, string> = {};
+
     if (apiKeys.news) {
       try {
         const sectors = userProfile?.sectors?.toLowerCase().replace(/ & /g, '+') || 'finance';
@@ -530,23 +619,26 @@ const Index = ({ defaultSection }: IndexProps) => {
       } catch (error) { console.error("Error fetching news:", error); }
     }
     setNewsData(articles);
+    setIsNewsLoading(false);
 
-    if (apiKeys.gemini && userProfile) {
+    if (apiKeys.gemini && userProfile && articles.length > 0) {
       try {
         const headlines = articles.map((a, i) => `${i+1}. ${a.title}`).join('\n');
-        const prompt = `Given this user profile: ${JSON.stringify(userProfile)}\n\nFor each headline, write a short "Why this matters to you" note (under 15 words):\n${headlines}\n\nReturn ONLY a JSON array of 6 strings, no markdown.`;
+        const prompt = `Given this user profile: ${JSON.stringify(userProfile)}\n\nFor each headline, write a short "Why this matters to you" note (under 15 words):\n${headlines}\n\nReturn ONLY a JSON array of strings, no markdown.`;
         const resp = await callGemini(prompt, 'Return ONLY a JSON array of strings. No markdown.');
         if (resp) {
           const clean = resp.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
           const parsed = JSON.parse(clean);
           if (Array.isArray(parsed)) {
-            const notes: Record<number, string> = {};
-            parsed.forEach((n, i) => notes[i] = n);
-            setRelevanceNotes(notes);
+            parsed.forEach((n, i) => aiNotes[i] = n);
+            setRelevanceNotes(aiNotes);
           }
         }
       } catch (error) { console.error("Error getting AI relevance:", error); }
     }
+
+    // Cache the full news data with notes
+    localStorage.setItem(cacheKey, JSON.stringify({ news: articles, notes: aiNotes }));
   };
 
   const navigateTo = (section: string) => {
@@ -585,8 +677,14 @@ const Index = ({ defaultSection }: IndexProps) => {
     }
 
     try {
-      // Use models confirmed available in your diagnostic list
-      const preferredModels = ['gemini-2.0-flash', 'gemini-flash-latest', 'gemini-1.5-flash'];
+      // Updated model list based on your console output for 2026/latest availability
+      const preferredModels = [
+        'gemini-2.0-flash', 
+        'gemini-2.0-flash-lite', 
+        'gemini-flash-latest', 
+        'gemini-1.5-flash-latest',
+        'gemini-1.5-flash'
+      ];
       
       for (const modelId of preferredModels) {
         const fullModelName = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
@@ -683,7 +781,8 @@ const Index = ({ defaultSection }: IndexProps) => {
 
   const finishOnboarding = async (answers: Record<string, string>) => {
     setIsLoadingProfile(true);
-    const profile: UserProfile = {
+    
+    let profile: UserProfile = {
       name: answers.name || 'User',
       type: answers.type,
       goals: answers.goals,
@@ -693,11 +792,36 @@ const Index = ({ defaultSection }: IndexProps) => {
       concern: answers.concern || '',
       summary: `You're a ${answers.risk?.toLowerCase() || 'moderate'} ${answers.type?.toLowerCase() || 'investor'} focused on ${answers.goals?.toLowerCase() || 'wealth building'}.`,
       persona: answers.risk === 'Aggressive' ? 'Growth Investor' : 'Balanced Investor',
-      recommendations: ['ET Prime for analysis']
+      recommendations: ['ET Prime for detailed analysis', 'ET Markets for live tracking']
     };
+
+    if (apiKeys.gemini) {
+      try {
+        const prompt = `Based on these onboarding answers: ${JSON.stringify(answers)}, 
+        generate a personalized financial profile in JSON format:
+        {
+          "summary": "A 2-sentence professional summary",
+          "persona": "A 2-word creative persona label (e.g. Maverick Investor, Prudent Saver)",
+          "recommendations": ["3 specific ET products or actions"]
+        }
+        Return ONLY the raw JSON.`;
+        
+        const resp = await callGemini(prompt, "You are an expert financial advisor. Return ONLY raw JSON.");
+        if (resp) {
+          const clean = resp.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const aiProfile = JSON.parse(clean);
+          profile.summary = aiProfile.summary;
+          profile.persona = aiProfile.persona;
+          profile.recommendations = aiProfile.recommendations;
+        }
+      } catch (error) {
+        console.error("AI Profile Gen failed, using local fallback:", error);
+      }
+    }
+
     setUserProfile(profile);
     localStorage.setItem('et_profile', JSON.stringify(profile));
-    setTimeout(() => { setIsLoadingProfile(false); navigate('/dashboard'); }, 1500);
+    setTimeout(() => { setIsLoadingProfile(false); navigate('/dashboard'); }, 1000);
   };
 
   const sendAiMessage = async (text: string) => {
@@ -759,8 +883,81 @@ const Index = ({ defaultSection }: IndexProps) => {
     setIsEditingName(false);
   };
 
+  const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
+  const [isServiceChatOpen, setIsServiceChatOpen] = useState(false);
+  const [serviceChatHistory, setServiceChatHistory] = useState<ChatMessage[]>([]);
+  const [isServiceAiTyping, setIsServiceAiTyping] = useState(false);
+
+  const openServiceAdvisor = (service: ServiceItem) => {
+    setSelectedService(service);
+    setIsServiceChatOpen(true);
+    setServiceChatHistory([{ 
+      role: 'assistant', 
+      content: `Hello! I'm your expert advisor for **${service.title}**. Based on your profile as a ${userProfile?.persona}, I can help you understand how this service fits your goals. What would you like to know?` 
+    }]);
+  };
+
+  const sendServiceAiMessage = async (text: string) => {
+    if (!text.trim() || !selectedService) return;
+    const userMsg: ChatMessage = { role: 'user', content: text };
+    setServiceChatHistory(prev => [...prev, userMsg]);
+    setIsServiceAiTyping(true);
+
+    const system = `You are an expert financial advisor specializing in ${selectedService.title}. 
+    User Profile: ${JSON.stringify(userProfile)}. 
+    Be professional, data-driven, and focus on how this specific service benefits the user's unique situation.`;
+
+    const resp = await callGemini(text, system, serviceChatHistory);
+    setIsServiceAiTyping(false);
+    setServiceChatHistory(prev => [...prev, { role: 'assistant', content: resp || "I'm having trouble connecting. Please try again." }]);
+  };
+
   return (
     <div className={`concierge-body`}>
+      {/* Service AI Advisor Modal */}
+      <div className={`modal-overlay ${isServiceChatOpen ? 'open' : ''}`}>
+        <div className="modal modal-wrapper" style={{ maxWidth: '600px', height: '80vh', display: 'flex', flexDirection: 'column', padding: 0 }}>
+          <div style={{ padding: '20px', borderBottom: '1px solid var(--et-border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0 }}>{selectedService?.title} Advisor</h3>
+            <button className="modal-close" onClick={() => setIsServiceChatOpen(false)} style={{ position: 'static' }}>✕</button>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column' }}>
+            {serviceChatHistory.map((m, i) => (
+              <div 
+                key={i} 
+                className={`chat-msg ${m.role === 'user' ? 'user' : 'bot'}`} 
+                style={{
+                  padding: '10px 14px', 
+                  borderRadius: '12px', 
+                  marginBottom: '8px', 
+                  maxWidth: '85%', 
+                  alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', 
+                  background: m.role === 'user' ? 'var(--et-accent)' : '#233554', 
+                  color: m.role === 'user' ? 'white' : '#CCD6F6'
+                }}
+              >
+                {m.role === 'assistant' ? parseMarkdown(m.content) : m.content}
+              </div>
+            ))}
+            {isServiceAiTyping && <p style={{ fontSize: '12px', color: 'var(--et-text-secondary)' }}>Advisor is thinking...</p>}
+          </div>
+          <div style={{ padding: '20px', borderTop: '1px solid var(--et-border-color)', display: 'flex', gap: '8px' }}>
+            <input 
+              type="text" 
+              placeholder="Ask the advisor..." 
+              style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--et-border-color)', borderRadius: '8px', padding: '10px 16px', color: 'white' }}
+              onKeyDown={e => { if(e.key === 'Enter') { sendServiceAiMessage((e.target as HTMLInputElement).value); (e.target as HTMLInputElement).value = ''; } }}
+            />
+            <button 
+              onClick={(e) => { const input = e.currentTarget.previousElementSibling as HTMLInputElement; sendServiceAiMessage(input.value); input.value = ''; }}
+              style={{ background: 'var(--et-accent)', color: 'white', border: 'none', borderRadius: '8px', padding: '0 20px', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Settings Modal */}
       <div className={`modal-overlay ${isSettingsOpen ? 'open' : ''}`}>
         <div className="modal modal-wrapper">
@@ -783,7 +980,11 @@ const Index = ({ defaultSection }: IndexProps) => {
           </div>
           <div className="modal-actions">
             <button className="btn-secondary" onClick={clearProfile}>Clear Profile</button>
-            <button className="btn-secondary" onClick={() => signOut()}>Logout</button>
+            <button className="btn-secondary" onClick={async () => {
+              await signOut();
+              setIsSettingsOpen(false);
+              navigate('/');
+            }}>Logout</button>
           </div>
         </div>
       </div>
@@ -797,18 +998,6 @@ const Index = ({ defaultSection }: IndexProps) => {
         <div className="profile-loading">
           <div className="spinner"></div>
           <p>Building your profile...</p>
-        </div>
-      )}
-
-      {/* ═══ SECTION: LANDING ═══ */}
-      {currentSection === 'landing' && (
-        <div className="section active" id="landing">
-          <div className="hero-content">
-            <h1 className="hero-logo"><span>ET</span> Concierge</h1>
-            <p className="hero-tagline">Professional financial guidance</p>
-            <div className="hero-cycle">{heroWord}</div>
-            <button className="hero-cta" onClick={startOnboarding}>Get Started</button>
-          </div>
         </div>
       )}
 
@@ -909,23 +1098,27 @@ const Index = ({ defaultSection }: IndexProps) => {
               </div>
               <button 
                 onClick={toggleBriefing}
+                disabled={isBriefingLoading}
                 style={{
                   background: isSpeaking ? 'var(--et-danger)' : 'var(--et-accent)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '50px',
-                  padding: '12px 24px',
+                  padding: '8px 16px',
+                  fontSize: '13px',
                   fontWeight: 'bold',
-                  cursor: 'pointer',
+                  cursor: isBriefingLoading ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  transition: 'transform 0.2s'
+                  gap: '6px',
+                  transition: 'transform 0.2s',
+                  opacity: isBriefingLoading ? 0.7 : 1,
+                  whiteSpace: 'nowrap'
                 }}
-                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
-                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                onMouseDown={e => !isBriefingLoading && (e.currentTarget.style.transform = 'scale(0.95)')}
+                onMouseUp={e => !isBriefingLoading && (e.currentTarget.style.transform = 'scale(1)')}
               >
-                {isSpeaking ? '⏹ Stop Briefing' : '🔊 Morning Briefing'}
+                {isBriefingLoading ? '⌛ Preparing...' : (isSpeaking ? '⏹ Stop' : '🔊 Daily Brief')}
               </button>
             </div>
 
@@ -973,18 +1166,29 @@ const Index = ({ defaultSection }: IndexProps) => {
               <div className="chart-card card-common">
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
                   <h3 style={{margin: 0}}>Market Sentiment (Live)</h3>
-                  <div style={{fontSize: '12px', color: 'var(--et-text-secondary)'}}>Symbol: NIFTY 50 (Proxy)</div>
+                  <div style={{fontSize: '12px', color: 'var(--et-text-secondary)'}}>Symbol: NIFTY 50 (8D View)</div>
                 </div>
 
                 {marketRange && (
                   <div style={{display: 'flex', gap: '16px', marginBottom: '16px', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '8px', fontSize: '11px'}}>
                     <div style={{flex: 1}}>
-                      <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>OPEN (Start)</div>
-                      <div style={{fontWeight: 'bold', color: 'white'}}>₹{marketRange.start.toLocaleString('en-IN')}</div>
+                      <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>PREV CLOSE</div>
+                      <div style={{fontWeight: 'bold', color: 'rgba(255,255,255,0.6)'}}>₹{previousClose?.toLocaleString('en-IN') || 'N/A'}</div>
                     </div>
                     <div style={{flex: 1}}>
-                      <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>LAST (End)</div>
+                      <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>CURRENT</div>
                       <div style={{fontWeight: 'bold', color: 'white'}}>₹{marketRange.end.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div style={{flex: 1}}>
+                      <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>CHANGE</div>
+                      <div style={{
+                        fontWeight: 'bold', 
+                        color: (marketRange.end >= (previousClose || 0)) ? 'var(--et-success)' : 'var(--et-danger)'
+                      }}>
+                        {((marketRange.end - (previousClose || 0)) >= 0 ? '+' : '')}
+                        {(marketRange.end - (previousClose || 0)).toFixed(2)} 
+                        {` (${((marketRange.end - (previousClose || 0)) / (previousClose || 1) * 100).toFixed(2)}%)`}
+                      </div>
                     </div>
                     <div style={{flex: 1}}>
                       <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>DAY HIGH</div>
@@ -1001,76 +1205,63 @@ const Index = ({ defaultSection }: IndexProps) => {
                   <ResponsiveContainer>
                     <AreaChart data={marketGraphData}>
                       <defs>
-                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="var(--et-success)" stopOpacity={0.4}/>
-                          <stop offset="95%" stopColor="var(--et-success)" stopOpacity={0}/>
+                        <linearGradient id="colorDynamic" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={marketRange && marketRange.end >= (previousClose || 0) ? "var(--et-success)" : "var(--et-danger)"} stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor={marketRange && marketRange.end >= (previousClose || 0) ? "var(--et-success)" : "var(--et-danger)"} stopOpacity={0}/>
                         </linearGradient>
-                        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                          <feGaussianBlur stdDeviation="3" result="blur" />
-                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                        </filter>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
                       <XAxis 
                         dataKey="name" 
                         axisLine={false} 
                         tickLine={false} 
-                        tick={{fill: 'var(--et-text-secondary)', fontSize: 10}} 
-                        minTickGap={20}
+                        tick={{fill: 'var(--et-text-secondary)', fontSize: 9}} 
+                        minTickGap={60}
                       />
                       <YAxis 
                         axisLine={false} 
                         tickLine={false} 
                         domain={['auto', 'auto']}
                         tick={{fill: 'var(--et-text-secondary)', fontSize: 10}}
-                        hide={false}
                       />
                       <Tooltip 
-                        contentStyle={{
-                          backgroundColor: '#0D1B2A',
-                          borderRadius: '8px', 
-                          border: '1px solid var(--et-success)', 
-                          boxShadow: '0 0 15px rgba(16,185,129,0.1)',
-                          color: '#F0F4FF',
-                          fontSize: '12px'
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const d = payload[0].payload;
+                            const val = d.value;
+                            const diff = d.gain ?? 0;
+                            const pct = d.percentage ?? 0;
+                            
+                            return (
+                              <div style={{ backgroundColor: '#0D1B2A', padding: '10px', borderRadius: '8px', border: `1px solid ${diff >= 0 ? 'var(--et-success)' : 'var(--et-danger)'}`, fontSize: '12px' }}>
+                                <div style={{ color: 'var(--et-text-secondary)', marginBottom: '4px' }}>{d.name}</div>
+                                <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '2px' }}>₹{val.toLocaleString('en-IN')}</div>
+                                <div style={{ color: diff >= 0 ? 'var(--et-success)' : 'var(--et-danger)', fontWeight: 'bold' }}>
+                                  {diff >= 0 ? '▲' : '▼'} {Math.abs(diff).toFixed(2)} ({pct.toFixed(2)}%)
+                                </div>
+                                {d.baseline && <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>Ref: ₹{d.baseline.toLocaleString('en-IN')}</div>}
+                              </div>
+                            );
+                          }
+                          return null;
                         }}
-                        itemStyle={{ color: 'var(--et-success)', fontWeight: 'bold' }}
-                        cursor={{ stroke: 'var(--et-success)', strokeWidth: 1 }}
                       />
-                      {marketRange && (
+                      {previousClose && (
                         <ReferenceLine 
-                          y={marketRange.start} 
-                          stroke="rgba(255,255,255,0.2)" 
-                          strokeDasharray="3 3"
-                          label={{ position: 'right', value: 'Open', fill: 'rgba(255,255,255,0.4)', fontSize: 10 }} 
+                          y={previousClose} 
+                          stroke="rgba(255,255,255,0.3)" 
+                          strokeDasharray="5 5"
+                          label={{ position: 'left', value: 'Prev Close', fill: 'rgba(255,255,255,0.4)', fontSize: 10 }} 
                         />
                       )}
                       <Area 
                         type="monotone" 
                         dataKey="value" 
-                        stroke="var(--et-success)" 
+                        stroke={marketRange && marketRange.end >= (previousClose || 0) ? "var(--et-success)" : "var(--et-danger)"}
                         strokeWidth={2} 
                         fillOpacity={1} 
-                        fill="url(#colorValue)" 
-                        filter="url(#glow)"
+                        fill="url(#colorDynamic)" 
                         animationDuration={1500}
-                        dot={(props: any) => {
-                          const { cx, cy, index } = props;
-                          if (index === 0 || index === marketGraphData.length - 1) {
-                            return (
-                              <circle 
-                                key={index} 
-                                cx={cx} 
-                                cy={cy} 
-                                r={4} 
-                                fill="var(--et-accent)" 
-                                stroke="white" 
-                                strokeWidth={1} 
-                              />
-                            );
-                          }
-                          return <></>;
-                        }}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -1089,27 +1280,38 @@ const Index = ({ defaultSection }: IndexProps) => {
                   </button>
                 </div>
                 <div className="market-grid">
-                  {marketData.map((d, i) => (
-                    <div key={i} className="market-card" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px'}}>
-                      <div className="label" style={{fontWeight: 'bold', fontSize: '14px'}}>{d.name}</div>
-                      {d.type && (
-                        <div style={{
-                          fontSize: '10px', 
-                          background: 'rgba(255,255,255,0.1)', 
-                          padding: '2px 8px', 
-                          borderRadius: '10px', 
-                          color: 'var(--et-text-secondary)',
-                          marginBottom: '4px',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px'
-                        }}>
-                          {d.type}
+                  {isMarketLoading 
+                    ? Array(6).fill(0).map((_, i) => (
+                        <div key={i} className="market-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                          <Skeleton width="60px" height="14px" />
+                          <Skeleton width="40px" height="10px" />
+                          <Skeleton width="80px" height="24px" style={{ marginTop: '4px' }} />
+                          <Skeleton width="40px" height="14px" />
                         </div>
-                      )}
-                      <div className="price" style={{fontSize: '18px', fontWeight: 'bold'}}>{d.price}</div>
-                      <div className="change" style={{color: d.up ? 'var(--et-success)' : 'var(--et-danger)', fontWeight: '600', fontSize: '13px'}}>{d.change}</div>
-                    </div>
-                  ))}
+                      ))
+                    : marketData.map((d, i) => (
+                        <div key={i} className="market-card" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative'}}>
+                          {d.mock && <span style={{ position: 'absolute', top: '4px', right: '4px', fontSize: '8px', background: 'rgba(255,255,255,0.1)', color: 'var(--et-text-secondary)', padding: '2px 4px', borderRadius: '4px' }}>Sample</span>}
+                          <div className="label" style={{fontWeight: 'bold', fontSize: '14px'}}>{d.name}</div>
+                          {d.type && (
+                            <div style={{
+                              fontSize: '10px', 
+                              background: 'rgba(255,255,255,0.1)', 
+                              padding: '2px 8px', 
+                              borderRadius: '10px', 
+                              color: 'var(--et-text-secondary)',
+                              marginBottom: '4px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px'
+                            }}>
+                              {d.type}
+                            </div>
+                          )}
+                          <div className="price" style={{fontSize: '18px', fontWeight: 'bold'}}>{d.price}</div>
+                          <div className="change" style={{color: d.up ? 'var(--et-success)' : 'var(--et-danger)', fontWeight: '600', fontSize: '13px'}}>{d.change}</div>
+                        </div>
+                      ))
+                  }
                 </div>
               </div>
 
@@ -1117,13 +1319,29 @@ const Index = ({ defaultSection }: IndexProps) => {
               <div style={{gridColumn: '1 / -1'}}>
                 <h3 style={{marginBottom: '16px'}}>Today's picks for you</h3>
                 <div className="news-grid">
-                  {newsData.map((a, i) => (
-                    <div key={i} className="news-card">
-                      <h4 style={{fontSize: '15px', marginBottom: '8px'}}>{a.title}</h4>
-                      <div style={{fontSize: '12px', color: 'var(--et-text-secondary)'}}>{a.source} · {a.time}</div>
-                      <a href={a.url} target="_blank" style={{marginTop: '12px', fontSize: '13px'}}>Read More →</a>
-                    </div>
-                  ))}
+                  {isNewsLoading
+                    ? Array(6).fill(0).map((_, i) => (
+                        <div key={i} className="news-card">
+                          <Skeleton width="100%" height="20px" style={{ marginBottom: '12px' }} />
+                          <Skeleton width="60%" height="14px" style={{ marginBottom: '16px' }} />
+                          <Skeleton width="100%" height="14px" />
+                        </div>
+                      ))
+                    : newsData.map((a, i) => (
+                        <div key={i} className="news-card">
+                          <h4 style={{fontSize: '15px', marginBottom: '8px'}}>{a.title}</h4>
+                          <div style={{fontSize: '12px', color: 'var(--et-text-secondary)', marginBottom: '12px'}}>{a.source} · {a.time}</div>
+                          
+                          {relevanceNotes[i] && (
+                            <div style={{ background: 'rgba(249,115,22,0.1)', borderLeft: '2px solid var(--et-accent)', padding: '8px 12px', borderRadius: '4px', marginBottom: '12px', fontSize: '12px', fontStyle: 'italic', color: '#CCD6F6' }}>
+                              <strong>Why this matters:</strong> {relevanceNotes[i]}
+                            </div>
+                          )}
+
+                          <a href={a.url} target="_blank" style={{marginTop: 'auto', fontSize: '13px'}}>Read More →</a>
+                        </div>
+                      ))
+                  }
                 </div>
               </div>
 
@@ -1146,6 +1364,33 @@ const Index = ({ defaultSection }: IndexProps) => {
                 </div>
               </div>
 
+              {/* Events Section */}
+              <div style={{gridColumn: '1 / -1'}}>
+                <h3 style={{marginBottom: '16px'}}>Events & Conferences</h3>
+                <div className="news-grid">
+                  {EVENTS.map((e, i) => {
+                    const isRecommended = e.matchSectors.some(s => userProfile?.sectors?.includes(s));
+                    return (
+                      <div key={i} className="news-card" style={{ border: isRecommended ? '1px solid var(--et-accent)' : '1px solid var(--et-border-color)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                          <h4 style={{fontSize: '15px', margin: 0}}>{e.title}</h4>
+                          {isRecommended && <span style={{ background: 'var(--et-accent)', color: 'white', fontSize: '10px', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>Recommended</span>}
+                        </div>
+                        <p style={{ fontSize: '13px', color: 'var(--et-text-secondary)', marginBottom: '12px' }}>{e.desc}</p>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--et-accent)', marginBottom: '16px' }}>{e.date}</div>
+                        <button 
+                          className="btn-primary" 
+                          style={{ width: '100%', fontSize: '13px', padding: '8px' }}
+                          onClick={() => showToast(`Registered interest for ${e.title}!`)}
+                        >
+                          Register Interest
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* AI Chat */}
               <div style={{gridColumn: '1 / -1'}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
@@ -1159,6 +1404,22 @@ const Index = ({ defaultSection }: IndexProps) => {
                 </div>
                 <div className="ai-chat-box card-common">
                   <div className="ai-chat-messages" style={{flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column'}}>
+                    {chatHistory.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--et-text-secondary)' }}>
+                        <p>How can I help you today, {userProfile?.name}?</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', marginTop: '20px' }}>
+                          {["What ET products suit me?", "Review my investment approach", "Find relevant ET events", "Suggest financial services"].map(chip => (
+                            <button 
+                              key={chip} 
+                              onClick={() => sendAiMessage(chip)}
+                              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--et-border-color)', borderRadius: '20px', padding: '6px 14px', fontSize: '12px', color: 'white', cursor: 'pointer' }}
+                            >
+                              {chip}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {chatHistory.map((m, i) => (
                       <div 
                         key={i} 
@@ -1252,13 +1513,25 @@ const Index = ({ defaultSection }: IndexProps) => {
           <div className="container" style={{padding: '40px 0'}}>
              <h2>Financial Services</h2>
              <div className="news-grid" style={{marginTop: '24px'}}>
-               {SERVICES.map(s => (
-                 <div key={s.id} className="news-card">
-                   <h4>{s.title}</h4>
-                   <p style={{fontSize: '14px', color: 'var(--et-text-secondary)'}}>{s.best}</p>
-                   <button onClick={() => sendAiMessage(`Tell me about ${s.title}`)} style={{marginTop: '12px', color: 'var(--et-accent)', background: 'none'}}>Get Advice →</button>
-                 </div>
-               ))}
+               {SERVICES.map(s => {
+                 const isRecommended = s.matchGoals.some(g => userProfile?.goals?.includes(g));
+                 return (
+                   <div key={s.id} className="news-card" style={{ border: isRecommended ? '1px solid var(--et-accent)' : '1px solid var(--et-border-color)' }}>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                       <h4 style={{ margin: 0 }}>{s.title}</h4>
+                       {isRecommended && <span style={{ background: 'var(--et-accent)', color: 'white', fontSize: '10px', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>Recommended</span>}
+                     </div>
+                     <p style={{fontSize: '14px', color: 'var(--et-text-secondary)', marginBottom: '16px'}}>{s.best}</p>
+                     <button 
+                        className="btn-primary" 
+                        style={{ width: '100%', fontSize: '13px', padding: '10px' }}
+                        onClick={() => openServiceAdvisor(s)}
+                     >
+                       Chat with Expert Advisor
+                     </button>
+                   </div>
+                 );
+               })}
              </div>
           </div>
         </div>

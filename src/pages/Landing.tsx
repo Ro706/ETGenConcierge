@@ -63,7 +63,9 @@ const Landing = () => {
           <span style={{ color: '#F97316' }}>ET</span> Concierge
         </div>
         <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-          <button onClick={() => navigate('/auth')} style={{ background: 'none', color: 'white', fontWeight: '600', cursor: 'pointer', border: 'none' }}>Login</button>
+          <button onClick={startOnboarding} style={{ background: 'none', color: 'white', fontWeight: '600', cursor: 'pointer', border: 'none' }}>
+            {user ? 'Go to Dashboard' : 'Login'}
+          </button>
           <button onClick={startOnboarding} style={{ background: '#F97316', color: 'white', padding: '10px 24px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>Get Started</button>
         </div>
       </nav>

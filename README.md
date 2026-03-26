@@ -43,5 +43,35 @@ ET Concierge is a professional, AI-powered financial assistant designed for the 
 - **Smart Caching**: Implemented localStorage caching for API responses (Market data, News, AI Nudges) to prevent excessive API calls and handle 429 errors.
 - **CORS Handling**: Robust fallback system to switch between primary and secondary data providers.
 
+## 🏗️ System Architecture
+
+The following diagram illustrates the data flow and integration between the frontend, AI engine, and external market APIs.
+
+```mermaid
+graph TD
+    User((User)) -->|Auth/Profile| App[React Frontend]
+    
+    subgraph "AI & Insights Engine"
+        App -->|Contextual Data| Gemini[Google Gemini AI]
+        Gemini -->|Persona/Nudges| App
+        Gemini -->|Daily Briefing| TTS[Text-to-Speech Engine]
+        TTS -->|Audio Brief| User
+    end
+
+    subgraph "External Data Layer"
+        TwelveData[Twelve Data API] -->|Live Quotes| App
+        Yahoo[Yahoo Finance Proxy] -->|Historical Charts| App
+        NewsAPI[The News API] -->|Market News| App
+        Supabase[Supabase] -->|User Auth| App
+    end
+
+    subgraph "Local Storage Cache"
+        App <-->|Market Data Cache| LS[Local Storage]
+        App <-->|AI Context/Chat| LS
+    end
+    
+    App -->|Interactive UI| User
+```
+
 ---
 © 2026 The Economic Times. All rights reserved.

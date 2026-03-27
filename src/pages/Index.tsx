@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/chart";
 import "./Concierge.css";
 import { useAuth } from "@/contexts/AuthContext";
-import { Pencil, Check, X } from "lucide-react";
+import { Pencil, Check, X, Menu } from "lucide-react";
 
 // --- Types ---
 interface UserProfile {
@@ -151,7 +151,13 @@ const FinancialHealthRings = ({ scores }: { scores: Record<string, number> }) =>
   ];
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center', margin: '20px 0' }}>
+    <div style={{ 
+      display: 'grid', 
+      gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', 
+      gap: '16px', 
+      justifyContent: 'center', 
+      margin: '20px 0' 
+    }}>
       {categories.map((cat, i) => {
         const radius = 35;
         const circumference = 2 * Math.PI * radius;
@@ -159,8 +165,8 @@ const FinancialHealthRings = ({ scores }: { scores: Record<string, number> }) =>
         
         return (
           <div key={cat.key} style={{ textAlign: 'center' }}>
-            <div style={{ position: 'relative', width: '100px', height: '100px', margin: '0 auto' }}>
-              <svg width="100" height="100" style={{ transform: 'rotate(-90deg)' }}>
+            <div style={{ position: 'relative', width: '80px', height: '80px', margin: '0 auto' }}>
+              <svg width="80" height="80" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
                 <circle
                   cx="50" cy="50" r={radius}
                   fill="transparent"
@@ -182,12 +188,12 @@ const FinancialHealthRings = ({ scores }: { scores: Record<string, number> }) =>
               </svg>
               <div style={{ 
                 position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                fontSize: '14px', fontWeight: 'bold'
+                fontSize: '12px', fontWeight: 'bold'
               }}>
                 {Math.round(scores[cat.key])}%
               </div>
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--et-text-secondary)', marginTop: '4px' }}>{cat.label}</div>
+            <div style={{ fontSize: '11px', color: 'var(--et-text-secondary)', marginTop: '4px' }}>{cat.label}</div>
           </div>
         );
       })}
@@ -280,14 +286,148 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const onboardMessagesEndRef = useRef<HTMLDivElement>(null);
   const aiMessagesEndRef = useRef<HTMLDivElement>(null);
   
   const hasCheckedInitialRedirect = useRef(false);
 
-  const Skeleton = ({ width, height, style }: { width?: string, height?: string, style?: any }) => (
-    <div className="skeleton" style={{ width: width || '100%', height: height || '20px', borderRadius: '4px', ...style }}></div>
+  const Skeleton = ({ width, height, className }: { width?: string, height?: string, className?: string }) => (
+    <div className={`animate-pulse rounded bg-white/10 ${className}`} style={{ width: width || '100%', height: height || '20px' }}></div>
+  );
+
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isMenuOpen]);
+
+  const Navbar = () => (
+    <>
+      <nav className="sticky top-0 z-40 flex h-[70px] w-full items-center justify-between border-b border-white/5 bg-background/80 px-4 backdrop-blur-md md:px-8">
+        <div className="text-xl font-extrabold text-white">
+          <span className="text-orange-500">ET</span> Concierge
+        </div>
+        
+        {/* Desktop Links */}
+        <div className="hidden items-center gap-1 md:flex lg:gap-2">
+          <button 
+            onClick={() => setCurrentSection('dashboard')}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              currentSection === 'dashboard' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Dashboard
+          </button>
+          <button 
+            onClick={() => setCurrentSection('markets')}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              currentSection === 'markets' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Markets
+          </button>
+          <button 
+            onClick={() => setCurrentSection('services')}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              currentSection === 'services' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Services
+          </button>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <button className="hidden text-sm text-slate-400 transition-colors hover:text-white md:block" onClick={() => setIsSettingsOpen(true)}>
+            ⚙ Settings
+          </button>
+          
+          {/* Hamburger Menu Button */}
+          <button 
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 hover:bg-white/5 hover:text-white md:hidden"
+            onClick={() => setIsMenuOpen(true)}
+          >
+            <Menu size={24} />
+          </button>
+        </div>
+      </nav>
+
+      {/* Mobile Drawer UI */}
+      <div className={`fixed inset-0 z-50 md:hidden ${isMenuOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+        {/* Overlay */}
+        <div 
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+            isMenuOpen ? 'opacity-100' : 'opacity-0'
+          }`}
+          onClick={() => setIsMenuOpen(false)}
+        />
+        
+        {/* Sidebar Drawer */}
+        <div className={`absolute left-0 top-0 h-full w-64 transform bg-[#0f172a] shadow-2xl transition-transform duration-300 ease-in-out ${
+          isMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}>
+          <div className="flex h-[70px] items-center justify-between border-b border-white/5 px-6">
+            <div className="text-lg font-bold text-white">
+              <span className="text-orange-500">ET</span> Menu
+            </div>
+            <button 
+              onClick={() => setIsMenuOpen(false)}
+              className="rounded-full p-2 text-slate-400 hover:bg-white/5 hover:text-white"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="flex flex-col p-4">
+            {[
+              { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
+              { id: 'markets', label: 'Markets', icon: '📈' },
+              { id: 'services', label: 'Services', icon: '🛠️' }
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setCurrentSection(item.id);
+                  setIsMenuOpen(false);
+                }}
+                className={`mb-2 flex items-center gap-4 rounded-xl p-4 text-left transition-all active:scale-95 ${
+                  currentSection === item.id 
+                    ? 'bg-orange-500/10 text-orange-500' 
+                    : 'text-slate-300 hover:bg-white/5'
+                }`}
+              >
+                <span className="text-xl">{item.icon}</span>
+                <span className="text-sm font-bold">{item.label}</span>
+              </button>
+            ))}
+            
+            <div className="mt-8 border-t border-white/5 pt-6">
+              <button 
+                onClick={() => {
+                  setIsSettingsOpen(true);
+                  setIsMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-4 rounded-xl p-4 text-left text-slate-400 hover:bg-white/5"
+              >
+                <span>⚙</span>
+                <span className="text-sm font-bold">Account Settings</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="absolute bottom-8 left-0 w-full px-6">
+             <div className="rounded-xl bg-orange-500/5 p-4 text-center">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-orange-500">Professional</div>
+                <div className="text-xs text-slate-400">AI Financial Companion</div>
+             </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 
   useEffect(() => {
@@ -1186,95 +1326,67 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
       {/* ═══ SECTION: DASHBOARD ═══ */}
       {currentSection === 'dashboard' && (
         <div className="section active" id="dashboard">
-          <nav className="top-nav">
-            <div className="nav-logo"><span>ET</span> Concierge</div>
-            <div className="nav-links">
-              <button className="nav-link active">Dashboard</button>
-              <button className="nav-link" onClick={() => setCurrentSection('markets')}>Markets</button>
-              <button className="nav-link" onClick={() => setCurrentSection('services')}>Services</button>
-            </div>
-            <div className="nav-right">
-              <button onClick={() => setIsSettingsOpen(true)}>⚙ Settings</button>
-            </div>
-          </nav>
+          <Navbar />
 
-          <div className="container">
+          <div className="container mx-auto px-4 py-6 md:py-8 lg:px-8">
             {/* Daily Action Nudge */}
-            <div className="card-common" style={{ 
-              gridColumn: '1 / -1', 
-              marginBottom: '24px', 
-              background: 'linear-gradient(135deg, #112240 0%, #1a365d 100%)',
-              border: '1px solid var(--et-accent)',
-              padding: '20px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              boxShadow: '0 10px 30px -15px rgba(2,12,27,0.7)'
-            }}>
-              <div>
-                <div style={{ fontSize: '12px', color: 'var(--et-accent)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>
+            <div className="mb-6 flex flex-col items-center justify-between gap-4 rounded-xl border border-orange-500/30 bg-gradient-to-br from-[#112240] to-[#1a365d] p-5 shadow-2xl md:flex-row lg:mb-8">
+              <div className="w-full flex-1 text-center md:text-left">
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-orange-500">
                   What should I do today?
                 </div>
-                <h2 style={{ margin: 0, fontSize: '20px', color: 'white' }}>
+                <h2 className="text-lg font-bold text-white md:text-xl lg:text-2xl">
                   {dailyAction || "Analyzing the markets for your personal nudge..."}
                 </h2>
               </div>
               <button 
                 onClick={toggleBriefing}
                 disabled={isBriefingLoading}
-                style={{
-                  background: isSpeaking ? 'var(--et-danger)' : 'var(--et-accent)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '50px',
-                  padding: '8px 16px',
-                  fontSize: '13px',
-                  fontWeight: 'bold',
-                  cursor: isBriefingLoading ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'transform 0.2s',
-                  opacity: isBriefingLoading ? 0.7 : 1,
-                  whiteSpace: 'nowrap'
-                }}
-                onMouseDown={e => !isBriefingLoading && (e.currentTarget.style.transform = 'scale(0.95)')}
-                onMouseUp={e => !isBriefingLoading && (e.currentTarget.style.transform = 'scale(1)')}
+                className={`flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 py-3 text-sm font-bold text-white transition-all md:w-auto ${
+                  isSpeaking ? 'bg-red-500' : 'bg-orange-500 hover:scale-105'
+                } ${isBriefingLoading ? 'cursor-not-allowed opacity-70' : ''}`}
               >
                 {isBriefingLoading ? '⌛ Preparing...' : (isSpeaking ? '⏹ Stop' : '🔊 Daily Brief')}
               </button>
             </div>
 
             {/* Financial Health Score Section */}
-            <div className="card-common" style={{ gridColumn: '1 / -1', marginBottom: '24px', textAlign: 'center' }}>
-              <h3 style={{ marginBottom: '8px' }}>Your Financial Health Score</h3>
-              <p style={{ fontSize: '14px', color: 'var(--et-text-secondary)', marginBottom: '20px' }}>Based on your personal profile and goals</p>
+            <div className="mb-6 rounded-xl border border-white/5 bg-[#112240] p-6 text-center lg:mb-8">
+              <h3 className="mb-2 text-lg font-bold">Your Financial Health Score</h3>
+              <p className="mb-6 text-sm text-slate-400">Based on your personal profile and goals</p>
               <FinancialHealthRings scores={healthScores} />
             </div>
 
-            <div className="dash-grid">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
               {/* Profile Card */}
-              <div className="profile-card card-common">
-                <h3>{userProfile?.name}</h3>
-                <div className="persona-badge" style={{background: 'var(--et-accent)', color: 'white', display: 'inline-block', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600', marginBottom: '12px'}}>
+              <div className="h-fit rounded-xl border border-white/5 bg-[#112240] p-6 lg:col-span-4">
+                <h3 className="mb-3 text-xl font-bold">{userProfile?.name}</h3>
+                <div className="mb-4 inline-block rounded-full bg-orange-500 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
                   {userProfile?.persona}
                 </div>
-                <div className="risk-indicator">
-                  <span className="risk-dot" style={{background: userProfile?.risk === 'Aggressive' ? 'var(--et-danger)' : userProfile?.risk === 'Conservative' ? 'var(--et-success)' : 'var(--et-accent-secondary)'}}></span>
+                <div className="mb-4 flex items-center gap-2 text-sm text-slate-300">
+                  <span className={`h-2 w-2 rounded-full ${
+                    userProfile?.risk === 'Aggressive' ? 'bg-red-500' : 
+                    userProfile?.risk === 'Conservative' ? 'bg-emerald-500' : 'bg-blue-500'
+                  }`}></span>
                   Risk: {userProfile?.risk}
                 </div>
-                <div className="goals-tags" style={{display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px'}}>
-                  {(userProfile?.goals || '').split(',').map(g => g.trim()).filter(Boolean).map(g => <span key={g} className="goal-tag" style={{background: 'rgba(37,99,235,0.1)', color: 'var(--et-accent)', padding: '4px 10px', borderRadius: '8px', fontSize: '11px'}}>{g}</span>)}
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {(userProfile?.goals || '').split(',').map(g => g.trim()).filter(Boolean).map(g => (
+                    <span key={g} className="rounded-lg bg-orange-500/10 px-3 py-1 text-[11px] font-medium text-orange-500">
+                      {g}
+                    </span>
+                  ))}
                 </div>
-                <p style={{fontSize: '14px', color: 'var(--et-text-secondary)', marginBottom: '16px'}}>{userProfile?.summary}</p>
+                <p className="mb-6 text-sm leading-relaxed text-slate-400">{userProfile?.summary}</p>
                 
                 {userProfile?.recommendations && userProfile.recommendations.length > 0 && (
-                  <div style={{marginTop: '16px', borderTop: '1px solid var(--et-border-color)', paddingTop: '16px'}}>
-                    <div style={{fontSize: '12px', fontWeight: 'bold', color: 'var(--et-accent)', marginBottom: '8px', textTransform: 'uppercase'}}>Top Recommendations</div>
-                    <ul style={{padding: 0, margin: 0, listStyle: 'none'}}>
+                  <div className="mt-6 border-t border-white/5 pt-6">
+                    <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-orange-500">Top Recommendations</div>
+                    <ul className="space-y-3">
                       {userProfile.recommendations.map((rec, i) => (
-                        <li key={i} style={{fontSize: '13px', color: 'white', marginBottom: '8px', display: 'flex', gap: '8px', alignItems: 'flex-start'}}>
-                          <span style={{color: 'var(--et-success)'}}>•</span>
+                        <li key={i} className="flex items-start gap-3 text-[13px] text-white">
+                          <span className="text-emerald-500 mt-1">•</span>
                           {rec}
                         </li>
                       ))}
@@ -1282,39 +1394,31 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                   </div>
                 )}
 
-                <button onClick={clearProfile} style={{color: 'var(--et-accent-secondary)', fontSize: '13px', marginTop: '12px', background: 'none'}}>↻ Reset</button>
+                <button onClick={clearProfile} className="mt-6 text-sm font-medium text-blue-400 transition-colors hover:text-blue-300">↻ Reset Profile</button>
               </div>
 
               {/* Analysis Graph */}
-              <div className="chart-card card-common" style={{ height: 'auto', minHeight: '450px' }}>
-                <div style={{display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px'}}>
-                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+              <div className="flex h-fit flex-col rounded-xl border border-white/5 bg-[#112240] p-4 md:p-6 lg:col-span-8">
+                <div className="mb-6 flex flex-col gap-4">
+                  <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
                     <div>
-                      <h3 style={{margin: 0, fontSize: '18px'}}>Market Performance</h3>
-                      <div style={{fontSize: '12px', color: 'var(--et-text-secondary)', marginTop: '4px'}}>
+                      <h3 className="text-lg font-bold">Market Performance</h3>
+                      <div className="mt-1 text-xs text-slate-400">
                         {SYMBOL_MAP[activeGraphSymbol]?.name} · {activeGraphRange.label} View
                       </div>
                     </div>
-
                   </div>
 
-                  <div className="symbol-selector" style={{display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none'}}>
+                  <div className="no-scrollbar flex gap-2 overflow-x-auto pb-2">
                     {Object.keys(SYMBOL_MAP).map(sym => (
                       <button 
                         key={sym}
                         onClick={() => setActiveGraphSymbol(sym)}
-                        style={{
-                          background: activeGraphSymbol === sym ? 'rgba(249,115,22,0.15)' : 'rgba(255,255,255,0.03)',
-                          color: activeGraphSymbol === sym ? 'var(--et-accent)' : 'var(--et-text-secondary)',
-                          border: activeGraphSymbol === sym ? '1px solid var(--et-accent)' : '1px solid rgba(255,255,255,0.05)',
-                          borderRadius: '20px',
-                          padding: '4px 12px',
-                          fontSize: '11px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                          transition: 'all 0.2s'
-                        }}
+                        className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs font-bold transition-all ${
+                          activeGraphSymbol === sym 
+                            ? 'border-orange-500 bg-orange-500/10 text-orange-500' 
+                            : 'border-white/5 bg-white/5 text-slate-400 hover:text-white'
+                        }`}
                       >
                         {sym}
                       </button>
@@ -1323,47 +1427,44 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                 </div>
 
                 {marketRange && (
-                  <div style={{display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '20px', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
-                    <div style={{flex: '1 1 120px'}}>
-                      <div style={{color: 'var(--et-text-secondary)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>Baseline</div>
-                      <div style={{fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', fontSize: '14px'}}>
+                  <div className="mb-6 grid grid-cols-2 gap-3 rounded-xl border border-white/5 bg-white/5 p-4 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
+                    <div className="flex flex-col">
+                      <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Baseline</div>
+                      <div className="text-sm font-bold text-slate-400">
                         {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{previousClose?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </div>
                     </div>
-                    <div style={{flex: '1 1 120px'}}>
-                      <div style={{color: 'var(--et-text-secondary)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>Current Price</div>
-                      <div style={{fontWeight: 'bold', color: 'white', fontSize: '14px'}}>
+                    <div className="flex flex-col">
+                      <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Current</div>
+                      <div className="text-sm font-bold text-white">
                         {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{marketRange.end.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </div>
                     </div>
-                    <div style={{flex: '1 1 120px'}}>
-                      <div style={{color: 'var(--et-text-secondary)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>Change</div>
-                      <div style={{
-                        fontWeight: 'bold', 
-                        fontSize: '14px',
-                        color: (marketRange.end >= (previousClose || 0)) ? 'var(--et-success)' : 'var(--et-danger)'
-                      }}>
+                    <div className="flex flex-col">
+                      <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Change</div>
+                      <div className={`text-sm font-bold ${
+                        (marketRange.end >= (previousClose || 0)) ? 'text-emerald-500' : 'text-red-500'
+                      }`}>
                         {((marketRange.end - (previousClose || 0)) >= 0 ? '+' : '')}
-                        {(marketRange.end - (previousClose || 0)).toFixed(2)} 
-                        {` (${((marketRange.end - (previousClose || 0)) / (previousClose || 1) * 100).toFixed(2)}%)`}
+                        {((marketRange.end - (previousClose || 0)) / (previousClose || 1) * 100).toFixed(2)}%
                       </div>
                     </div>
-                    <div style={{flex: '1 1 120px'}}>
-                      <div style={{color: 'var(--et-text-secondary)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>Range High</div>
-                      <div style={{fontWeight: 'bold', color: 'var(--et-success)', fontSize: '14px'}}>
+                    <div className="flex flex-col">
+                      <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">High</div>
+                      <div className="text-sm font-bold text-emerald-500">
                         {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{marketRange.high.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </div>
                     </div>
-                    <div style={{flex: '1 1 120px'}}>
-                      <div style={{color: 'var(--et-text-secondary)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>Range Low</div>
-                      <div style={{fontWeight: 'bold', color: 'var(--et-danger)', fontSize: '14px'}}>
+                    <div className="flex flex-col">
+                      <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Low</div>
+                      <div className="text-sm font-bold text-red-500">
                         {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{marketRange.low.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </div>
                     </div>
                   </div>
                 )}
 
-                <div style={{ width: '100%', height: '300px' }}>
+                <div className="h-[250px] w-full md:h-[300px] lg:h-[350px]">
                   <ChartContainer
                     config={{
                       value: {
@@ -1375,25 +1476,12 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                   >
                     <AreaChart
                       data={marketGraphData}
-                      margin={{
-                        left: 0,
-                        right: 0,
-                        top: 10,
-                        bottom: 0
-                      }}
+                      margin={{ left: 0, right: 0, top: 10, bottom: 0 }}
                     >
                       <defs>
                         <linearGradient id="fillPrice" x1="0" y1="0" x2="0" y2="1">
-                          <stop
-                            offset="5%"
-                            stopColor="var(--color-value)"
-                            stopOpacity={0.3}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="var(--color-value)"
-                            stopOpacity={0}
-                          />
+                          <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -1403,12 +1491,9 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                         axisLine={false}
                         tickMargin={12}
                         minTickGap={60}
-                        tick={{ fill: 'var(--et-text-secondary)', fontSize: 10 }}
+                        tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }}
                       />
-                      <YAxis
-                        hide
-                        domain={['auto', 'auto']}
-                      />
+                      <YAxis hide domain={['auto', 'auto']} />
                       <ChartTooltip
                         cursor={{ stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1 }}
                         content={
@@ -1423,36 +1508,17 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                               const isPositive = (p.gain || 0) >= 0;
                               
                               return (
-                                <div className="flex flex-col gap-2 min-w-[150px] p-1 text-white">
+                                <div className="flex min-w-[150px] flex-col gap-2 p-1 text-white">
                                   <div className="flex items-center justify-between gap-4">
-                                    <span className="text-gray-400 text-[10px] uppercase font-bold">Live Price</span>
-                                    <span className="font-mono font-bold text-sm">
+                                    <span className="text-[10px] font-bold uppercase text-gray-400">Live Price</span>
+                                    <span className="font-mono text-sm font-bold">
                                       {curr}{Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                     </span>
                                   </div>
-                                  
-                                  <div className="grid grid-cols-1 gap-y-1.5 text-[11px] border-t border-white/10 pt-2.5">
-                                    <div className="flex justify-between gap-3">
-                                      <span className="text-gray-400 uppercase">Open</span>
-                                      <span className="font-mono text-gray-200">
-                                        {curr}{(p.open ?? value ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                      </span>
-                                    </div>
-                                    <div className="flex justify-between gap-3">
-                                      <span className="text-gray-400 uppercase">High</span>
-                                      <span className="font-mono" style={{ color: '#10B981' }}>
-                                        {curr}{(p.high ?? value ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                      </span>
-                                    </div>
-                                    <div className="flex justify-between gap-3">
-                                      <span className="text-gray-400 uppercase">Low</span>
-                                      <span className="font-mono" style={{ color: '#EF4444' }}>
-                                        {curr}{(p.low ?? value ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                      </span>
-                                    </div>
-                                    <div className="flex justify-between gap-3 border-t border-white/5 pt-1.5 mt-0.5">
-                                      <span className="text-gray-400 uppercase font-bold">Day Change</span>
-                                      <span style={{ color: isPositive ? '#10B981' : '#EF4444' }} className="font-bold font-mono">
+                                  <div className="grid grid-cols-1 gap-y-1.5 border-t border-white/10 pt-2.5 text-[11px]">
+                                    <div className="flex justify-between gap-3 font-mono">
+                                      <span className="text-gray-400 uppercase">Change</span>
+                                      <span style={{ color: isPositive ? '#10B981' : '#EF4444' }} className="font-bold">
                                         {isPositive ? '+' : ''}{(p.percentage || 0).toFixed(2)}%
                                       </span>
                                     </div>
@@ -1463,25 +1529,10 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                           />
                         }
                       />
-                      {previousClose && (
-                        <ReferenceLine 
-                          y={previousClose} 
-                          stroke="rgba(255,255,255,0.2)" 
-                          strokeDasharray="4 4"
-                          label={{ 
-                            position: 'right', 
-                            value: 'Baseline', 
-                            fill: 'rgba(255,255,255,0.3)', 
-                            fontSize: 9,
-                            dy: -10
-                          }} 
-                        />
-                      )}
                       <Area
                         dataKey="value"
                         name="value"
                         type="linear"
-
                         fill="url(#fillPrice)"
                         fillOpacity={0.4}
                         stroke="var(--color-value)"
@@ -1493,58 +1544,53 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                 </div>
               </div>
 
-              {/* Markets */}
-              <div style={{gridColumn: '1 / -1'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-                  <h3 style={{margin: 0}}>Live Market Snapshot</h3>
+              {/* Markets Snapshot */}
+              <div className="lg:col-span-12">
+                <div className="mb-6 flex items-center justify-between">
+                  <h3 className="text-lg font-bold">Live Market Snapshot</h3>
                   <button 
                     onClick={() => { fetchMarketData(); fetchMarketGraph(); showToast("Market data updated"); }}
-                    style={{fontSize: '12px', color: 'var(--et-accent)', background: 'rgba(249,115,22,0.1)', border: '1px solid var(--et-accent)', borderRadius: '4px', padding: '4px 12px', cursor: 'pointer'}}
+                    className="rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-xs font-bold text-orange-500 transition-colors hover:bg-orange-500/20"
                   >
-                    Refresh Data
+                    Refresh
                   </button>
                 </div>
-                <div className="market-grid">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
                   {isMarketLoading 
                     ? Array(6).fill(0).map((_, i) => (
-                        <div key={i} className="market-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                        <div key={i} className="flex flex-col items-center gap-3 rounded-xl border border-white/5 bg-[#112240] p-4">
                           <Skeleton width="60px" height="14px" />
-                          <Skeleton width="40px" height="10px" />
-                          <Skeleton width="80px" height="24px" style={{ marginTop: '4px' }} />
-                          <Skeleton width="40px" height="14px" />
+                          <Skeleton width="80px" height="24px" />
+                          <Skeleton width="100%" height="30px" />
                         </div>
                       ))
                     : marketData.map((d, i) => (
                         <div 
                           key={i} 
-                          className="market-card" 
                           onClick={() => {
                             const found = Object.keys(SYMBOL_MAP).find(k => SYMBOL_MAP[k].yahoo === d.symbol || k === d.name);
                             if (found) setActiveGraphSymbol(found);
                           }}
-                          style={{display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative', cursor: 'pointer', transition: 'all 0.2s', padding: '16px 12px'}}
+                          className="group relative flex cursor-pointer flex-col gap-2 rounded-xl border border-white/5 bg-[#112240] p-4 transition-all hover:border-orange-500/50"
                         >
-                          <div style={{display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'flex-start'}}>
-                            <div className="label" style={{fontWeight: 'bold', fontSize: '13px'}}>{d.name}</div>
-                            <div className="change" style={{color: d.up ? 'var(--et-success)' : 'var(--et-danger)', fontWeight: 'bold', fontSize: '11px'}}>{d.percentChange}</div>
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs font-bold text-slate-300 group-hover:text-white">{d.name}</div>
+                            <div className={`text-[10px] font-bold ${d.up ? 'text-emerald-500' : 'text-red-500'}`}>{d.percentChange}</div>
                           </div>
-                          
-                          <div className="price" style={{fontSize: '16px', fontWeight: 'bold', marginBottom: '8px'}}>{d.price}</div>
-                          
-                          {/* Sparkline View */}
-                          <div style={{width: '100%', height: '40px', marginTop: 'auto'}}>
+                          <div className="text-lg font-bold text-white">{d.price}</div>
+                          <div className="mt-auto h-[35px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                               <AreaChart data={marketSparklines[d.name] || []}>
                                 <defs>
                                   <linearGradient id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor={d.up ? 'var(--et-success)' : 'var(--et-danger)'} stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor={d.up ? 'var(--et-success)' : 'var(--et-danger)'} stopOpacity={0}/>
+                                    <stop offset="5%" stopColor={d.up ? '#10B981' : '#EF4444'} stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor={d.up ? '#10B981' : '#EF4444'} stopOpacity={0}/>
                                   </linearGradient>
                                 </defs>
                                 <Area 
                                   type="monotone" 
                                   dataKey="value" 
-                                  stroke={d.up ? 'var(--et-success)' : 'var(--et-danger)'} 
+                                  stroke={d.up ? '#10B981' : '#EF4444'} 
                                   fill={`url(#grad-${i})`} 
                                   strokeWidth={1.5} 
                                   isAnimationActive={false}
@@ -1561,29 +1607,29 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
               </div>
 
               {/* News */}
-              <div style={{gridColumn: '1 / -1'}}>
-                <h3 style={{marginBottom: '16px'}}>Today's picks for you</h3>
-                <div className="news-grid">
+              <div className="lg:col-span-12">
+                <h3 className="mb-6 text-lg font-bold">Today's picks for you</h3>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {isNewsLoading
                     ? Array(6).fill(0).map((_, i) => (
-                        <div key={i} className="news-card">
-                          <Skeleton width="100%" height="20px" style={{ marginBottom: '12px' }} />
-                          <Skeleton width="60%" height="14px" style={{ marginBottom: '16px' }} />
-                          <Skeleton width="100%" height="14px" />
+                        <div key={i} className="rounded-xl border border-white/5 bg-[#112240] p-5">
+                          <Skeleton width="100%" height="20px" className="mb-3" />
+                          <Skeleton width="60%" height="14px" className="mb-4" />
+                          <Skeleton width="100%" height="40px" />
                         </div>
                       ))
                     : newsData.map((a, i) => (
-                        <div key={i} className="news-card">
-                          <h4 style={{fontSize: '15px', marginBottom: '8px'}}>{a.title}</h4>
-                          <div style={{fontSize: '12px', color: 'var(--et-text-secondary)', marginBottom: '12px'}}>{a.source} · {a.time}</div>
+                        <div key={i} className="flex flex-col rounded-xl border border-white/5 bg-[#112240] p-5 transition-all hover:border-orange-500/30">
+                          <h4 className="mb-2 text-sm font-bold leading-snug text-white md:text-base">{a.title}</h4>
+                          <div className="mb-4 text-[10px] font-medium text-slate-500">{a.source} · {a.time}</div>
                           
                           {relevanceNotes[i] && (
-                            <div style={{ background: 'rgba(249,115,22,0.1)', borderLeft: '2px solid var(--et-accent)', padding: '8px 12px', borderRadius: '4px', marginBottom: '12px', fontSize: '12px', fontStyle: 'italic', color: '#CCD6F6' }}>
-                              <strong>Why this matters:</strong> {relevanceNotes[i]}
+                            <div className="mb-4 rounded-lg bg-orange-500/10 p-3 text-xs leading-relaxed text-slate-300">
+                              <strong className="text-orange-500">Why this matters:</strong> {relevanceNotes[i]}
                             </div>
                           )}
 
-                          <a href={a.url} target="_blank" style={{marginTop: 'auto', fontSize: '13px'}}>Read More →</a>
+                          <a href={a.url} target="_blank" className="mt-auto text-xs font-bold text-orange-500 transition-colors hover:text-orange-400">Read More →</a>
                         </div>
                       ))
                   }
@@ -1591,73 +1637,46 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
               </div>
 
               {/* Web Scraped News */}
-              <div style={{gridColumn: '1 / -1'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-                  <h3 style={{margin: 0}}>Latest from the Web (Live)</h3>
-                  <div style={{fontSize: '11px', color: 'var(--et-accent)', background: 'rgba(249,115,22,0.1)', padding: '2px 8px', borderRadius: '4px'}}>Market Pulse</div>
+              <div className="lg:col-span-12">
+                <div className="mb-6 flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-white">Latest Market Pulse</h3>
+                  <div className="rounded-full bg-orange-500/10 px-3 py-1 text-[10px] font-bold text-orange-500">Live</div>
                 </div>
-                <div className="news-grid">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                   {webNews.map((a, i) => (
-                    <div key={i} className="news-card" style={{borderLeft: '3px solid var(--et-accent)'}}>
-                      <h4 style={{fontSize: '14px', marginBottom: '8px', lineHeight: '1.4'}}>{a.title}</h4>
-                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto'}}>
-                        <div style={{fontSize: '11px', color: 'var(--et-text-secondary)'}}>{a.source} · {a.time}</div>
-                        <a href={a.url} target="_blank" style={{fontSize: '11px', color: 'var(--et-accent)', fontWeight: '600'}}>Source ↗</a>
+                    <div key={i} className="flex flex-col border-l-2 border-orange-500 bg-[#112240]/50 p-4 transition-all hover:bg-[#112240]">
+                      <h4 className="mb-3 text-xs font-bold leading-normal text-white">{a.title}</h4>
+                      <div className="mt-auto flex items-center justify-between gap-2">
+                        <div className="text-[10px] text-slate-500">{a.source} · {a.time}</div>
+                        <a href={a.url} target="_blank" className="text-[10px] font-bold text-orange-500">Source ↗</a>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Events Section */}
-              <div style={{gridColumn: '1 / -1'}}>
-                <h3 style={{marginBottom: '16px'}}>Events & Conferences</h3>
-                <div className="news-grid">
-                  {EVENTS.map((e, i) => {
-                    const isRecommended = e.matchSectors.some(s => userProfile?.sectors?.includes(s));
-                    return (
-                      <div key={i} className="news-card" style={{ border: isRecommended ? '1px solid var(--et-accent)' : '1px solid var(--et-border-color)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                          <h4 style={{fontSize: '15px', margin: 0}}>{e.title}</h4>
-                          {isRecommended && <span style={{ background: 'var(--et-accent)', color: 'white', fontSize: '10px', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>Recommended</span>}
-                        </div>
-                        <p style={{ fontSize: '13px', color: 'var(--et-text-secondary)', marginBottom: '12px' }}>{e.desc}</p>
-                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--et-accent)', marginBottom: '16px' }}>{e.date}</div>
-                        <button 
-                          className="btn-primary" 
-                          style={{ width: '100%', fontSize: '13px', padding: '8px' }}
-                          onClick={() => showToast(`Registered interest for ${e.title}!`)}
-                        >
-                          Register Interest
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* AI Chat */}
-              <div style={{gridColumn: '1 / -1'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-                  <h3 style={{margin: 0, color: 'var(--et-text-primary)'}}>🤖 Your AI Financial Guide</h3>
+              {/* AI Chat Section */}
+              <div className="lg:col-span-12">
+                <div className="mb-6 flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-white">🤖 Your AI Financial Guide</h3>
                   <button 
                     onClick={clearChat} 
-                    style={{fontSize: '12px', color: 'var(--et-text-secondary)', background: 'none', border: '1px solid var(--et-border-color)', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer'}}
+                    className="text-xs font-medium text-slate-500 hover:text-white"
                   >
-                    Clear Chat
+                    Clear History
                   </button>
                 </div>
-                <div className="ai-chat-box card-common">
-                  <div className="ai-chat-messages" style={{flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column'}}>
+                <div className="flex h-[500px] flex-col overflow-hidden rounded-2xl border border-white/5 bg-[#112240]">
+                  <div className="no-scrollbar flex-1 overflow-y-auto p-4 md:p-6">
                     {chatHistory.length === 0 && (
-                      <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--et-text-secondary)' }}>
-                        <p>How can I help you today, {userProfile?.name}?</p>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', marginTop: '20px' }}>
-                          {["What ET products suit me?", "Review my investment approach", "Find relevant ET events", "Suggest financial services"].map(chip => (
+                      <div className="flex h-full flex-col items-center justify-center text-center">
+                        <div className="mb-4 text-slate-400">How can I help you today, {userProfile?.name}?</div>
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {["What ET products suit me?", "Review my strategy", "Tax planning tips"].map(chip => (
                             <button 
                               key={chip} 
                               onClick={() => sendAiMessage(chip)}
-                              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--et-border-color)', borderRadius: '20px', padding: '6px 14px', fontSize: '12px', color: 'white', cursor: 'pointer' }}
+                              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-slate-300 transition-all hover:border-orange-500 hover:text-white"
                             >
                               {chip}
                             </button>
@@ -1665,43 +1684,45 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                         </div>
                       </div>
                     )}
-                    {chatHistory.map((m, i) => (
-                      <div 
-                        key={i} 
-                        className={`chat-msg ${m.role === 'user' ? 'user' : 'bot'}`} 
-                        style={{
-                          padding: '10px 14px', 
-                          borderRadius: '12px', 
-                          marginBottom: '8px', 
-                          maxWidth: '80%', 
-                          alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', 
-                          background: m.role === 'user' ? 'var(--et-accent)' : '#233554', 
-                          color: m.role === 'user' ? 'white' : '#CCD6F6'
-                        }}
-                      >
-                        {m.role === 'assistant' ? parseMarkdown(m.content) : m.content}
-                      </div>
-                    ))}
-                    {isAiTyping && <p style={{fontSize: '12px', color: 'var(--et-text-secondary)'}}>AI is typing...</p>}
-                    <div ref={aiMessagesEndRef} />
+                    <div className="flex flex-col gap-4">
+                      {chatHistory.map((m, i) => (
+                        <div 
+                          key={i} 
+                          className={`max-w-[85%] rounded-2xl p-4 text-sm leading-relaxed ${
+                            m.role === 'user' 
+                              ? 'self-end bg-orange-500 text-white font-bold' 
+                              : 'self-start bg-[#233554] text-slate-200 border border-white/5'
+                          }`}
+                        >
+                          {m.role === 'assistant' ? parseMarkdown(m.content) : m.content}
+                        </div>
+                      ))}
+                      {isAiTyping && (
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <span className="flex h-2 w-2 animate-bounce rounded-full bg-slate-500"></span>
+                          AI is thinking...
+                        </div>
+                      )}
+                      <div ref={aiMessagesEndRef} />
+                    </div>
                   </div>
-                  <div style={{padding: '16px', borderTop: '1px solid var(--et-border-color)', display: 'flex', gap: '8px'}}>
-                    <input 
-                      type="text" 
-                      value={aiInput} 
-                      onChange={e => setAiInput(e.target.value)} 
-                      placeholder="Ask anything..." 
-                      style={{
-                        flex: 1,
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid var(--et-border-color)',
-                        borderRadius: '8px',
-                        padding: '10px 16px',
-                        color: 'white'
-                      }} 
-                      onKeyDown={e => e.key === 'Enter' && sendAiMessage(aiInput)} 
-                    />
-                    <button onClick={() => sendAiMessage(aiInput)} style={{background: 'var(--et-accent)', color: 'white', padding: '8px 20px', borderRadius: '8px', fontWeight: 'bold'}}>Send</button>
+                  <div className="border-t border-white/5 bg-black/20 p-4">
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={aiInput} 
+                        onChange={e => setAiInput(e.target.value)} 
+                        placeholder="Ask anything about markets or your goals..." 
+                        className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-orange-500 focus:outline-none"
+                        onKeyDown={e => e.key === 'Enter' && sendAiMessage(aiInput)} 
+                      />
+                      <button 
+                        onClick={() => sendAiMessage(aiInput)} 
+                        className="rounded-xl bg-orange-500 px-6 font-bold text-white transition-all hover:bg-orange-600 active:scale-95"
+                      >
+                        Send
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1714,185 +1735,144 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
       {/* ═══ SECTION: MARKETS ═══ */}
       {currentSection === 'markets' && (
         <div className="section active">
-          <nav className="top-nav">
-             <div className="nav-logo"><span>ET</span> Concierge</div>
-             <div className="nav-links">
-               <button className="nav-link" onClick={() => setCurrentSection('dashboard')}>Dashboard</button>
-               <button className="nav-link active">Markets</button>
-               <button className="nav-link" onClick={() => setCurrentSection('services')}>Services</button>
-             </div>
-             <div className="nav-right">
-               <button onClick={() => setIsSettingsOpen(true)}>⚙ Settings</button>
-             </div>
-          </nav>
-          <div className="container" style={{padding: '40px 0'}}>
-             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px'}}>
+          <Navbar />
+          <div className="container mx-auto px-4 py-6 md:py-8 lg:px-8">
+             <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 style={{margin: 0}}>Market Intelligence</h2>
-                  <p style={{color: 'var(--et-text-secondary)', margin: '8px 0 0 0'}}>Real-time analysis across Stocks, Forex and Crypto</p>
+                  <h2 className="text-2xl font-bold text-white md:text-3xl">Market Intelligence</h2>
+                  <p className="mt-1 text-sm text-slate-400">Real-time analysis across Stocks, Forex and Crypto</p>
                 </div>
                 <button 
                   onClick={() => { fetchMarketData(); fetchMarketGraph(); showToast("Market data refreshed"); }}
-                  style={{background: 'var(--et-accent)', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer'}}
+                  className="rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-white transition-all hover:bg-orange-600 active:scale-95 sm:w-auto"
                 >
                   Refresh All
                 </button>
              </div>
 
              {/* Graph Section in Markets */}
-             <div className="dash-grid" style={{marginBottom: '40px'}}>
-                <div style={{gridColumn: '1 / -1'}}>
-                   <div className="chart-card card-common" style={{ height: 'auto', minHeight: '450px' }}>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px'}}>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
-                          <div>
-                            <h3 style={{margin: 0, fontSize: '18px'}}>Technical Analysis</h3>
-                            <div style={{fontSize: '12px', color: 'var(--et-text-secondary)', marginTop: '4px'}}>
-                              {SYMBOL_MAP[activeGraphSymbol]?.name} · {activeGraphRange.label} Chart
-                            </div>
+             <div className="mb-8 grid grid-cols-1 gap-6">
+                <div className="rounded-2xl border border-white/5 bg-[#112240] p-4 md:p-6">
+                   <div className="mb-6 flex flex-col gap-4">
+                      <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                        <div>
+                          <h3 className="text-lg font-bold">Technical Analysis</h3>
+                          <div className="mt-1 text-xs text-slate-400">
+                            {SYMBOL_MAP[activeGraphSymbol]?.name} · {activeGraphRange.label} View
                           </div>
                         </div>
                       </div>
-
-                      {marketRange && (
-                        <div style={{display: 'flex', flexWrap: 'wrap', gap: '20px', marginBottom: '24px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
-                          <div>
-                            <div style={{color: 'var(--et-text-secondary)', fontSize: '10px', textTransform: 'uppercase', marginBottom: '4px'}}>Current</div>
-                            <div style={{fontWeight: 'bold', fontSize: '20px'}}>{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{marketRange.end.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-                          </div>
-                          <div>
-                            <div style={{color: 'var(--et-text-secondary)', fontSize: '10px', textTransform: 'uppercase', marginBottom: '4px'}}>Change</div>
-                            <div style={{fontWeight: 'bold', fontSize: '20px', color: (marketRange.end >= (previousClose || 0)) ? 'var(--et-success)' : 'var(--et-danger)'}}>
-                              {((marketRange.end - (previousClose || 0)) >= 0 ? '+' : '')}{((marketRange.end - (previousClose || 0)) / (previousClose || 1) * 100).toFixed(2)}%
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      <div style={{ width: '100%', height: '300px' }}>
-                        <ChartContainer
-                          config={{ value: { label: "Price", color: marketRange && marketRange.end >= (previousClose || 0) ? "var(--et-success)" : "var(--et-danger)" } }}
-                          className="h-full w-full"
-                        >
-                          <AreaChart data={marketGraphData}>
-                            <defs>
-                              <linearGradient id="fillPriceMarkets" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                            <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={12} minTickGap={60} tick={{ fill: 'var(--et-text-secondary)', fontSize: 10 }} />
-                            <YAxis hide domain={['auto', 'auto']} />
-                            <ChartTooltip 
-                              content={
-                                <ChartTooltipContent 
-                                  formatter={(value, name, item) => {
-                                    const p = item?.payload;
-                                    if (!p) return null;
-                                    const symbol = SYMBOL_MAP[activeGraphSymbol] || { currency: 'INR' };
-                                    const curr = symbol.currency === 'INR' ? '₹' : '$';
-                                    const isPositive = (p.gain || 0) >= 0;
-                                    
-                                    return (
-                                      <div className="flex flex-col gap-2 min-w-[150px] p-1 text-white">
-                                        <div className="flex items-center justify-between gap-4">
-                                          <span className="text-gray-400 text-[10px] uppercase font-bold">Live Price</span>
-                                          <span className="font-mono font-bold text-sm">
-                                            {curr}{Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                          </span>
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-1 gap-y-1.5 text-[11px] border-t border-white/10 pt-2.5">
-                                          <div className="flex justify-between gap-3">
-                                            <span className="text-gray-400 uppercase">Open</span>
-                                            <span className="font-mono text-gray-200">
-                                              {curr}{(p.open ?? value ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                            </span>
-                                          </div>
-                                          <div className="flex justify-between gap-3">
-                                            <span className="text-gray-400 uppercase">High</span>
-                                            <span className="font-mono" style={{ color: '#10B981' }}>
-                                              {curr}{(p.high ?? value ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                            </span>
-                                          </div>
-                                          <div className="flex justify-between gap-3">
-                                            <span className="text-gray-400 uppercase">Low</span>
-                                            <span className="font-mono" style={{ color: '#EF4444' }}>
-                                              {curr}{(p.low ?? value ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                            </span>
-                                          </div>
-                                          <div className="flex justify-between gap-3 border-t border-white/5 pt-1.5 mt-0.5">
-                                            <span className="text-gray-400 uppercase font-bold">Day Change</span>
-                                            <span style={{ color: isPositive ? '#10B981' : '#EF4444' }} className="font-bold font-mono">
-                                              {isPositive ? '+' : ''}{(p.percentage || 0).toFixed(2)}%
-                                            </span>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    );
-                                  }}
-                                />
-                              }
-                            />
-                            <Area
-                              dataKey="value"
-                              name="value"
-                              type="linear"
- fill="url(#fillPriceMarkets)" stroke="var(--color-value)" strokeWidth={2} />
-                          </AreaChart>
-                        </ChartContainer>
+                      
+                      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-2">
+                        {Object.keys(SYMBOL_MAP).map(sym => (
+                          <button 
+                            key={sym}
+                            onClick={() => setActiveGraphSymbol(sym)}
+                            className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs font-bold transition-all ${
+                              activeGraphSymbol === sym 
+                                ? 'border-orange-500 bg-orange-500/10 text-orange-500' 
+                                : 'border-white/5 bg-white/5 text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            {sym}
+                          </button>
+                        ))}
                       </div>
+                   </div>
+
+                   {marketRange && (
+                     <div className="mb-8 grid grid-cols-2 gap-4 rounded-xl bg-white/5 p-4 sm:grid-cols-4 md:p-6">
+                       <div>
+                         <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Current</div>
+                         <div className="text-xl font-bold text-white">
+                           {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{marketRange.end.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                         </div>
+                       </div>
+                       <div>
+                         <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Change</div>
+                         <div className={`text-xl font-bold ${
+                           (marketRange.end >= (previousClose || 0)) ? 'text-emerald-500' : 'text-red-500'
+                         }`}>
+                           {((marketRange.end - (previousClose || 0)) >= 0 ? '+' : '')}
+                           {((marketRange.end - (previousClose || 0)) / (previousClose || 1) * 100).toFixed(2)}%
+                         </div>
+                       </div>
+                       <div className="hidden sm:block">
+                         <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">24h High</div>
+                         <div className="text-xl font-bold text-emerald-500">
+                           {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{marketRange.high.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                         </div>
+                       </div>
+                       <div className="hidden sm:block">
+                         <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">24h Low</div>
+                         <div className="text-xl font-bold text-red-500">
+                           {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{marketRange.low.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                         </div>
+                       </div>
+                     </div>
+                   )}
+
+                   <div className="h-[300px] w-full md:h-[400px]">
+                     <ChartContainer
+                       config={{ value: { label: "Price", color: marketRange && marketRange.end >= (previousClose || 0) ? "var(--et-success)" : "var(--et-danger)" } }}
+                       className="h-full w-full"
+                     >
+                       <AreaChart data={marketGraphData} margin={{ left: 0, right: 0, top: 10, bottom: 0 }}>
+                         <defs>
+                           <linearGradient id="fillPriceMarkets" x1="0" y1="0" x2="0" y2="1">
+                             <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.3} />
+                             <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0} />
+                           </linearGradient>
+                         </defs>
+                         <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                         <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={12} minTickGap={60} tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }} />
+                         <YAxis hide domain={['auto', 'auto']} />
+                         <ChartTooltip content={<ChartTooltipContent />} />
+                         <Area dataKey="value" name="value" type="linear" fill="url(#fillPriceMarkets)" stroke="var(--color-value)" strokeWidth={2} />
+                       </AreaChart>
+                     </ChartContainer>
                    </div>
                 </div>
              </div>
 
              {/* Detailed Market Table */}
-             <div className="card-common" style={{padding: 0, overflow: 'hidden'}}>
-                <div style={{padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between'}}>
-                  <h3 style={{margin: 0}}>Market Overview</h3>
+             <div className="mb-12 overflow-hidden rounded-2xl border border-white/5 bg-[#112240]">
+                <div className="border-b border-white/5 p-6">
+                  <h3 className="text-lg font-bold text-white">Market Overview</h3>
                 </div>
-                <div style={{overflowX: 'auto'}}>
-                  <table style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left'}}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
                     <thead>
-                      <tr style={{background: 'rgba(255,255,255,0.02)', color: 'var(--et-text-secondary)', fontSize: '12px', textTransform: 'uppercase'}}>
-                        <th style={{padding: '16px 20px'}}>Asset</th>
-                        <th style={{padding: '16px 20px'}}>Price</th>
-                        <th style={{padding: '16px 20px'}}>Change</th>
-                        <th style={{padding: '16px 20px'}}>Volume</th>
+                      <tr className="bg-white/5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        <th className="px-6 py-4">Asset</th>
+                        <th className="px-6 py-4">Price</th>
+                        <th className="px-6 py-4">Change</th>
+                        <th className="px-6 py-4 hidden md:table-cell">Volume</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-white/5">
                       {marketData.map((d, i) => (
                         <tr 
                           key={i} 
                           onClick={() => {
-                            const found = Object.keys(SYMBOL_MAP).find(k => SYMBOL_MAP[k].twelve === d.symbol || SYMBOL_MAP[k].twelve.startsWith(d.name));
+                            const found = Object.keys(SYMBOL_MAP).find(k => SYMBOL_MAP[k].yahoo === d.symbol || SYMBOL_MAP[k].name === d.name);
                             if (found) setActiveGraphSymbol(found);
                             showToast(`Loading chart for ${d.name}`);
                           }}
-                          style={{
-                            borderBottom: '1px solid rgba(255,255,255,0.05)', 
-                            cursor: 'pointer',
-                            transition: 'background 0.2s'
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          className="group cursor-pointer transition-colors hover:bg-white/5"
                         >
-                          <td style={{padding: '16px 20px'}}>
-                            <div style={{fontWeight: 'bold'}}>{d.name}</div>
-                            <div style={{fontSize: '11px', color: 'var(--et-text-secondary)'}}>{d.type}</div>
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-white group-hover:text-orange-500">{d.name}</div>
+                            <div className="text-[10px] text-slate-500">{d.type}</div>
                           </td>
-                          <td style={{padding: '16px 20px', fontWeight: 'bold', fontSize: '15px'}}>{d.price}</td>
-                          <td style={{padding: '16px 20px'}}>
-                            <div style={{color: d.up ? 'var(--et-success)' : 'var(--et-danger)', fontWeight: 'bold'}}>
+                          <td className="px-6 py-4 font-mono font-bold text-white">{d.price}</td>
+                          <td className="px-6 py-4">
+                            <div className={`font-bold ${d.up ? 'text-emerald-500' : 'text-red-500'}`}>
                               {d.percentChange}
                             </div>
-                            <div style={{fontSize: '11px', color: d.up ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)'}}>
-                              {d.change}
-                            </div>
+                            <div className="text-[10px] text-slate-500">{d.change}</div>
                           </td>
-                          <td style={{padding: '16px 20px', fontSize: '13px', color: 'rgba(255,255,255,0.8)'}}>{d.volume}</td>
+                          <td className="px-6 py-4 text-xs text-slate-400 hidden md:table-cell">{d.volume}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1900,15 +1880,15 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                 </div>
              </div>
 
-             <div style={{marginTop: '48px'}}>
-                <h3 style={{marginBottom: '16px'}}>Latest Market Pulse (Web)</h3>
-                <div className="news-grid">
+             <div>
+                <h3 className="mb-6 text-xl font-bold text-white">Latest Market Pulse</h3>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {webNews.map((a, i) => (
-                    <div key={i} className="news-card" style={{borderLeft: '3px solid var(--et-accent)'}}>
-                      <h4 style={{fontSize: '14px', marginBottom: '8px', lineHeight: '1.4'}}>{a.title}</h4>
-                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto'}}>
-                        <div style={{fontSize: '11px', color: 'var(--et-text-secondary)'}}>{a.source} · {a.time}</div>
-                        <a href={a.url} target="_blank" style={{fontSize: '11px', color: 'var(--et-accent)', fontWeight: '600'}}>Source ↗</a>
+                    <div key={i} className="flex flex-col rounded-xl border-l-4 border-orange-500 bg-[#112240] p-5 transition-all hover:bg-[#1a365d]">
+                      <h4 className="mb-4 text-sm font-bold leading-relaxed text-white">{a.title}</h4>
+                      <div className="mt-auto flex items-center justify-between">
+                        <div className="text-[10px] text-slate-500">{a.source} · {a.time}</div>
+                        <a href={a.url} target="_blank" className="text-[10px] font-bold text-orange-500">Source ↗</a>
                       </div>
                     </div>
                   ))}
@@ -1921,32 +1901,44 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
       {/* ═══ SECTION: SERVICES ═══ */}
       {currentSection === 'services' && (
         <div className="section active">
-          <nav className="top-nav">
-             <div className="nav-logo"><span>ET</span> Concierge</div>
-             <button onClick={() => setCurrentSection('dashboard')}>← Back to Dashboard</button>
-          </nav>
-          <div className="container" style={{padding: '40px 0'}}>
-             <h2>Financial Services</h2>
-             <div className="news-grid" style={{marginTop: '24px'}}>
-               {SERVICES.map(s => {
-                 const isRecommended = s.matchGoals.some(g => userProfile?.goals?.includes(g));
-                 return (
-                   <div key={s.id} className="news-card" style={{ border: isRecommended ? '1px solid var(--et-accent)' : '1px solid var(--et-border-color)' }}>
-                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                       <h4 style={{ margin: 0 }}>{s.title}</h4>
-                       {isRecommended && <span style={{ background: 'var(--et-accent)', color: 'white', fontSize: '10px', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>Recommended</span>}
+          <Navbar />
+          <div className="container mx-auto px-4 py-6 md:py-8 lg:px-8">
+             <div className="mb-8">
+               <h2 className="text-2xl font-bold text-white md:text-3xl">Professional Services</h2>
+               <p className="mt-1 text-sm text-slate-400">Expert guidance tailored to your {userProfile?.persona} profile</p>
+             </div>
+             
+             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+               {SERVICES.length === 0 ? (
+                 <div className="col-span-full rounded-2xl border border-dashed border-white/10 p-12 text-center">
+                   <div className="mb-4 text-4xl">🛠️</div>
+                   <h3 className="text-lg font-bold text-white">Services are being personalized</h3>
+                   <p className="mx-auto mt-2 max-w-xs text-sm text-slate-500">Our team is hand-picking the best ET products for your goals.</p>
+                 </div>
+               ) : (
+                 SERVICES.map(s => {
+                   const isRecommended = s.matchGoals.some(g => userProfile?.goals?.includes(g));
+                   return (
+                     <div key={s.id} className={`flex flex-col rounded-2xl border p-6 transition-all hover:scale-[1.02] ${
+                       isRecommended ? 'border-orange-500/50 bg-orange-500/5' : 'border-white/5 bg-[#112240]'
+                     }`}>
+                       <div className="mb-4 flex items-start justify-between">
+                         <h4 className="text-lg font-bold text-white">{s.title}</h4>
+                         {isRecommended && (
+                           <span className="rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold text-white">RECO</span>
+                         )}
+                       </div>
+                       <p className="mb-8 text-sm leading-relaxed text-slate-400">{s.best}</p>
+                       <button 
+                          onClick={() => openServiceAdvisor(s)}
+                          className="mt-auto w-full rounded-xl bg-white/5 py-3 text-sm font-bold text-white transition-all hover:bg-orange-500"
+                       >
+                         Chat with Expert Advisor
+                       </button>
                      </div>
-                     <p style={{fontSize: '14px', color: 'var(--et-text-secondary)', marginBottom: '16px'}}>{s.best}</p>
-                     <button 
-                        className="btn-primary" 
-                        style={{ width: '100%', fontSize: '13px', padding: '10px' }}
-                        onClick={() => openServiceAdvisor(s)}
-                     >
-                       Chat with Expert Advisor
-                     </button>
-                   </div>
-                 );
-               })}
+                   );
+                 })
+               )}
              </div>
           </div>
         </div>

@@ -1,11 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
+import { Menu, X } from "lucide-react";
 
 const Landing = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [heroWord, setHeroWord] = useState("News");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     const words = ["News", "Markets", "Finance", "Events", "Investments", "Tax Planning"];
@@ -52,22 +54,66 @@ const Landing = () => {
   ];
 
   return (
-    <div style={{ position: 'relative', overflowX: 'hidden', background: '#0A1628', color: 'white', fontFamily: 'Inter, sans-serif' }}>
+    <div className="concierge-body" style={{ position: 'relative', overflowX: 'hidden' }}>
       {/* Landing Nav */}
       <nav style={{ 
-        position: 'fixed', top: 0, left: 0, right: 0, padding: '20px 40px', 
+        position: 'fixed', top: 0, left: 0, right: 0, padding: '15px 5%', 
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 100,
-        background: 'rgba(10, 22, 40, 0.8)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.05)'
+        background: 'rgba(10, 25, 47, 0.85)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.05)'
       }}>
-        <div className="nav-logo" style={{ fontSize: '24px', fontWeight: 'bold' }}>
+        <div className="nav-logo" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
           <span style={{ color: '#F97316' }}>ET</span> Concierge
         </div>
-        <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-          <button onClick={startOnboarding} style={{ background: 'none', color: 'white', fontWeight: '600', cursor: 'pointer', border: 'none' }}>
-            {user ? 'Go to Dashboard' : 'Login'}
+        
+        {/* Desktop Links */}
+        <div className="hidden md:flex gap-6 items-center">
+          <button onClick={startOnboarding} style={{ background: 'none', color: 'white', fontWeight: '600', cursor: 'pointer', border: 'none', fontSize: '0.9rem' }}>
+            {user ? 'Dashboard' : 'Login'}
           </button>
-          <button onClick={startOnboarding} style={{ background: '#F97316', color: 'white', padding: '10px 24px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>Get Started</button>
+          <button onClick={startOnboarding} style={{ background: '#F97316', color: 'white', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }}>Get Started</button>
         </div>
+
+        {/* Mobile Menu Button */}
+        <button 
+          className="flex md:hidden text-white hover:text-orange-500 transition-colors" 
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+        >
+          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+
+        {/* Mobile Menu Drawer */}
+        {isMenuOpen && (
+          <div 
+            className="fixed inset-0 top-[60px] z-[99] md:hidden bg-background/98 backdrop-blur-xl animate-in fade-in slide-in-from-right-5 duration-300"
+            style={{ height: 'calc(100vh - 60px)' }}
+          >
+            <div className="flex flex-col p-8 gap-6">
+              <button 
+                onClick={() => { startOnboarding(); setIsMenuOpen(false); }}
+                className="w-full py-4 px-6 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-lg text-left flex justify-between items-center group active:scale-95 transition-all"
+              >
+                <span>{user ? 'Dashboard' : 'Login / Register'}</span>
+                <span className="text-orange-500 group-hover:translate-x-1 transition-transform">→</span>
+              </button>
+              <button 
+                onClick={() => { startOnboarding(); setIsMenuOpen(false); }}
+                className="w-full py-4 px-6 rounded-xl bg-orange-500 text-white font-bold text-lg text-left shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
+              >
+                Get Started for Free
+              </button>
+              
+              <div className="mt-auto pt-12 border-t border-white/5">
+                <div className="text-slate-500 text-sm font-medium mb-4 uppercase tracking-widest">Our Ecosystem</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-slate-300 text-sm">ET Markets</div>
+                  <div className="text-slate-300 text-sm">ET Prime</div>
+                  <div className="text-slate-300 text-sm">Wealth</div>
+                  <div className="text-slate-300 text-sm">Panache</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
@@ -75,19 +121,19 @@ const Landing = () => {
         <div style={{ position: 'absolute', top: '10%', left: '10%', width: '60%', height: '60%', background: 'radial-gradient(circle, rgba(249,115,22,0.1) 0%, transparent 70%)', filter: 'blur(80px)', zIndex: 0 }}></div>
         <div style={{ position: 'absolute', bottom: '10%', right: '10%', width: '60%', height: '60%', background: 'radial-gradient(circle, rgba(37,99,235,0.1) 0%, transparent 70%)', filter: 'blur(80px)', zIndex: 0 }}></div>
         
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 style={{ fontSize: 'clamp(48px, 10vw, 90px)', fontWeight: '900', marginBottom: '20px', lineHeight: '1.1' }}>
+        <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '1000px' }}>
+          <h1 style={{ fontSize: 'clamp(2.5rem, 8vw, 5.5rem)', fontWeight: '900', marginBottom: '1rem', lineHeight: '1.1' }}>
             <span style={{ color: '#F97316' }}>ET</span> Concierge
           </h1>
-          <p style={{ fontSize: 'clamp(18px, 3vw, 24px)', maxWidth: '800px', margin: '0 auto 24px', color: '#CCD6F6', lineHeight: '1.6' }}>
+          <p style={{ fontSize: 'clamp(1.1rem, 2.5vw, 1.5rem)', maxWidth: '700px', margin: '0 auto 1.5rem', color: '#CCD6F6', lineHeight: '1.6' }}>
             Your professional AI companion for markets, finance, and wealth management.
           </p>
-          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#F97316', marginBottom: '48px', height: '40px' }}>
+          <div style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)', fontWeight: 'bold', color: '#F97316', marginBottom: '3rem', height: '2.5rem' }}>
             {heroWord}
           </div>
           
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button onClick={startOnboarding} style={{ padding: '18px 48px', fontSize: '18px', fontWeight: 'bold', background: '#F97316', color: 'white', borderRadius: '12px', border: 'none', cursor: 'pointer', boxShadow: '0 0 30px rgba(249,115,22,0.3)', transition: 'transform 0.2s' }}>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button className="btn-primary" onClick={startOnboarding} style={{ padding: '16px 32px', fontSize: '1.1rem', width: 'auto' }}>
               Build Your Profile Now
             </button>
           </div>
@@ -95,53 +141,53 @@ const Landing = () => {
       </section>
 
       {/* Features Grid */}
-      <section style={{ padding: '100px 20px', maxWidth: '1200px', margin: '0 auto' }}>
-        <h2 style={{ textAlign: 'center', fontSize: '42px', marginBottom: '60px' }}>Everything you need to <span style={{ color: '#F97316' }}>Succeed</span></h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+      <section style={{ padding: '80px 5%', maxWidth: '1200px', margin: '0 auto' }}>
+        <h2 style={{ textAlign: 'center', fontSize: 'clamp(2rem, 5vw, 2.5rem)', marginBottom: '3rem' }}>Everything you need to <span style={{ color: '#F97316' }}>Succeed</span></h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
           {features.map((f, i) => (
-            <div key={i} style={{ background: 'rgba(255,255,255,0.03)', padding: '40px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)', transition: 'transform 0.3s' }}>
-              <div style={{ fontSize: '40px', marginBottom: '20px' }}>{f.icon}</div>
-              <h3 style={{ fontSize: '22px', marginBottom: '12px' }}>{f.title}</h3>
-              <p style={{ color: '#8892B0', lineHeight: '1.6' }}>{f.desc}</p>
+            <div key={i} className="card-common" style={{ transition: 'transform 0.3s', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>{f.icon}</div>
+              <h3 style={{ fontSize: '1.4rem', marginBottom: '1rem' }}>{f.title}</h3>
+              <p style={{ color: '#8892B0', lineHeight: '1.6', fontSize: '0.95rem' }}>{f.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* How it Works Section */}
-      <section style={{ background: 'rgba(255,255,255,0.02)', padding: '100px 20px' }}>
+      <section style={{ background: 'rgba(255,255,255,0.02)', padding: '80px 5%' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'center', marginBottom: '60px', fontSize: '42px' }}>The Journey Ahead</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '40px' }}>
+          <h2 style={{ textAlign: 'center', marginBottom: '3rem', fontSize: 'clamp(2rem, 5vw, 2.5rem)' }}>The Journey Ahead</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '40px' }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ width: '80px', height: '80px', background: '#F97316', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '24px', fontWeight: 'bold' }}>1</div>
-              <h3 style={{ marginBottom: '15px' }}>Onboarding</h3>
-              <p style={{ color: '#8892B0', lineHeight: '1.6' }}>Answer a few questions about your financial goals and risk appetite.</p>
+              <div style={{ width: '60px', height: '60px', background: '#F97316', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '1.5rem', fontWeight: 'bold' }}>1</div>
+              <h3 style={{ marginBottom: '12px' }}>Onboarding</h3>
+              <p style={{ color: '#8892B0', lineHeight: '1.6', fontSize: '0.95rem' }}>Answer a few questions about your financial goals and risk appetite.</p>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ width: '80px', height: '80px', background: '#2563EB', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '24px', fontWeight: 'bold' }}>2</div>
-              <h3 style={{ marginBottom: '15px' }}>Personalization</h3>
-              <p style={{ color: '#8892B0', lineHeight: '1.6' }}>Our AI builds a custom persona and filters the market just for you.</p>
+              <div style={{ width: '60px', height: '60px', background: '#2563EB', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '1.5rem', fontWeight: 'bold' }}>2</div>
+              <h3 style={{ marginBottom: '12px' }}>Personalization</h3>
+              <p style={{ color: '#8892B0', lineHeight: '1.6', fontSize: '0.95rem' }}>Our AI builds a custom persona and filters the market just for you.</p>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ width: '80px', height: '80px', background: '#10B981', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '24px', fontWeight: 'bold' }}>3</div>
-              <h3 style={{ marginBottom: '15px' }}>Daily Guidance</h3>
-              <p style={{ color: '#8892B0', lineHeight: '1.6' }}>Receive morning briefings, live nudges, and 24/7 expert advice.</p>
+              <div style={{ width: '60px', height: '60px', background: '#10B981', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '1.5rem', fontWeight: 'bold' }}>3</div>
+              <h3 style={{ marginBottom: '12px' }}>Daily Guidance</h3>
+              <p style={{ color: '#8892B0', lineHeight: '1.6', fontSize: '0.95rem' }}>Receive morning briefings, live nudges, and 24/7 expert advice.</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Testimonials */}
-      <section style={{ padding: '100px 20px', maxWidth: '1200px', margin: '0 auto' }}>
-        <h2 style={{ textAlign: 'center', fontSize: '42px', marginBottom: '60px' }}>Trusted by <span style={{ color: '#F97316' }}>Investors</span></h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+      <section style={{ padding: '80px 5%', maxWidth: '1200px', margin: '0 auto' }}>
+        <h2 style={{ textAlign: 'center', fontSize: 'clamp(2rem, 5vw, 2.5rem)', marginBottom: '3rem' }}>Trusted by <span style={{ color: '#F97316' }}>Investors</span></h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
           {testimonials.map((t, i) => (
-            <div key={i} style={{ background: 'rgba(255,255,255,0.03)', padding: '30px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <p style={{ fontStyle: 'italic', marginBottom: '20px', color: '#CCD6F6' }}>"{t.text}"</p>
+            <div key={i} className="card-common" style={{ display: 'flex', flexDirection: 'column' }}>
+              <p style={{ fontStyle: 'italic', marginBottom: '1.5rem', color: '#CCD6F6', flex: 1, fontSize: '0.95rem' }}>"{t.text}"</p>
               <div>
-                <div style={{ fontWeight: 'bold' }}>{t.name}</div>
-                <div style={{ fontSize: '14px', color: '#F97316' }}>{t.role}</div>
+                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{t.name}</div>
+                <div style={{ fontSize: '0.85rem', color: '#F97316' }}>{t.role}</div>
               </div>
             </div>
           ))}
@@ -149,40 +195,40 @@ const Landing = () => {
       </section>
 
       {/* FAQ */}
-      <section style={{ padding: '100px 20px', maxWidth: '800px', margin: '0 auto' }}>
-        <h2 style={{ textAlign: 'center', fontSize: '42px', marginBottom: '60px' }}>FAQ</h2>
+      <section style={{ padding: '80px 5%', maxWidth: '800px', margin: '0 auto' }}>
+        <h2 style={{ textAlign: 'center', fontSize: 'clamp(2rem, 5vw, 2.5rem)', marginBottom: '3rem' }}>FAQ</h2>
         {faqs.map((f, i) => (
-          <div key={i} style={{ marginBottom: '30px', paddingBottom: '30px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            <h3 style={{ fontSize: '20px', marginBottom: '10px' }}>{f.q}</h3>
-            <p style={{ color: '#8892B0', lineHeight: '1.6' }}>{f.a}</p>
+          <div key={i} style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>{f.q}</h3>
+            <p style={{ color: '#8892B0', lineHeight: '1.6', fontSize: '0.95rem' }}>{f.a}</p>
           </div>
         ))}
       </section>
 
       {/* Final CTA */}
-      <section style={{ padding: '100px 20px', textAlign: 'center', position: 'relative' }}>
+      <section style={{ padding: '100px 5%', textAlign: 'center', position: 'relative' }}>
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(249,115,22,0.2) 0%, transparent 70%)', filter: 'blur(50px)', zIndex: 0 }}></div>
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <h2 style={{ fontSize: '48px', marginBottom: '24px' }}>Ready to take control?</h2>
-          <p style={{ fontSize: '20px', color: '#8892B0', marginBottom: '40px' }}>Join thousands of investors using AI to beat the market.</p>
-          <button onClick={startOnboarding} style={{ padding: '18px 48px', fontSize: '18px', fontWeight: 'bold', background: '#F97316', color: 'white', borderRadius: '12px', border: 'none', cursor: 'pointer' }}>Get Started for Free</button>
+          <h2 style={{ fontSize: 'clamp(2rem, 6vw, 3rem)', marginBottom: '1.5rem' }}>Ready to take control?</h2>
+          <p style={{ fontSize: 'clamp(1rem, 3vw, 1.25rem)', color: '#8892B0', marginBottom: '2.5rem' }}>Join thousands of investors using AI to beat the market.</p>
+          <button className="btn-primary" onClick={startOnboarding} style={{ padding: '16px 48px', fontSize: '1.1rem' }}>Get Started for Free</button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '60px 20px', textAlign: 'center', background: '#081220' }}>
-        <div style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '20px' }}>
+      <footer style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '60px 5%', textAlign: 'center', background: '#081220' }}>
+        <div style={{ fontSize: '1.75rem', fontWeight: 'bold', marginBottom: '1.25rem' }}>
           <span style={{ color: '#F97316' }}>ET</span> Concierge
         </div>
-        <p style={{ color: '#8892B0', marginBottom: '30px', maxWidth: '600px', margin: '0 auto 30px' }}>
+        <p style={{ color: '#8892B0', marginBottom: '2rem', maxWidth: '600px', margin: '0 auto 2rem', fontSize: '0.9rem' }}>
           Empowering Indian investors with professional AI-driven financial insights.
         </p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '40px', marginBottom: '40px', fontSize: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', marginBottom: '2.5rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
           <a href="#" style={{ color: '#CCD6F6', textDecoration: 'none' }}>Terms of Service</a>
           <a href="#" style={{ color: '#CCD6F6', textDecoration: 'none' }}>Privacy Policy</a>
           <a href="#" style={{ color: '#CCD6F6', textDecoration: 'none' }}>Contact Us</a>
         </div>
-        <p style={{ fontSize: '12px', color: '#495670' }}>© 2026 The Economic Times. All rights reserved.</p>
+        <p style={{ fontSize: '0.75rem', color: '#495670' }}>© 2026 The Economic Times. All rights reserved.</p>
       </footer>
     </div>
   );

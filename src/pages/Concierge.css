@@ -91,6 +91,17 @@
   border-bottom: 1px solid var(--et-border-color);
   padding: 0 32px; display: flex; align-items: center; justify-content: space-between; height: 70px;
 }
+
+@media (max-width: 768px) {
+  .concierge-body .top-nav {
+    padding: 0 16px;
+    height: 60px;
+  }
+  .concierge-body .nav-links {
+    display: none; /* Hide desktop links on mobile */
+  }
+}
+
 .concierge-body .nav-logo {
   font-weight: 800; font-size: 20px;
 }
@@ -107,6 +118,12 @@
   text-align: center; min-height: 100vh; padding: 0 24px;
 }
 .concierge-body .hero-logo { font-size: 64px; font-weight: 900; margin: 0; }
+@media (max-width: 640px) {
+  .concierge-body .hero-logo { font-size: 42px; }
+  .concierge-body .hero-tagline { font-size: 16px; }
+  .concierge-body .hero-cycle { font-size: 24px; }
+}
+
 .concierge-body .hero-logo span { color: var(--et-accent); }
 .concierge-body .hero-tagline { font-size: 20px; color: var(--et-text-secondary); margin: 12px 0 32px 0; }
 .concierge-body .hero-cycle {
@@ -118,14 +135,23 @@
   display: grid; gap: 24px; padding: 32px 0;
   grid-template-columns: 320px 1fr;
 }
-@media (max-width: 968px) { .concierge-body .dash-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1024px) {
+  .concierge-body .dash-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 .concierge-body .card-common {
   background: var(--et-card-bg); border: 1px solid var(--et-border-color);
   border-radius: var(--et-radius); padding: 24px;
 }
+@media (max-width: 640px) {
+  .concierge-body .card-common {
+    padding: 16px;
+  }
+}
 
-.concierge-body .chart-card { height: 320px; }
+.concierge-body .chart-card { height: auto; min-height: 320px; }
 
 /* ── Profile Card ── */
 .concierge-body .profile-card h3 { margin: 0 0 16px 0; font-size: 20px; }
@@ -134,6 +160,12 @@
 
 /* ── News & Services ── */
 .concierge-body .news-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+@media (max-width: 640px) {
+  .concierge-body .news-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .concierge-body .news-card {
   background: var(--et-bg-secondary); border: 1px solid var(--et-border-color);
   padding: 20px; border-radius: var(--et-radius); transition: all 0.3s;
@@ -144,6 +176,12 @@
 
 /* ── Market ── */
 .concierge-body .market-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+@media (max-width: 480px) {
+  .concierge-body .market-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .concierge-body .market-card {
   padding: 16px; border: 1px solid var(--et-border-color); border-radius: var(--et-radius);
   background: var(--et-bg-secondary); text-align: center;
@@ -159,6 +197,13 @@
   background: var(--et-bg-secondary); border: 1px solid var(--et-border-color);
   border-radius: var(--et-radius); height: 500px; display: flex; flex-direction: column;
 }
+@media (max-width: 640px) {
+  .concierge-body .chat-container {
+    height: calc(100vh - 180px);
+    margin-bottom: 20px;
+  }
+}
+
 .concierge-body .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
 .concierge-body .chat-msg { padding: 12px 18px; border-radius: 12px; max-width: 80%; font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
 .concierge-body .chat-msg.bot { background: #233554; color: #CCD6F6; align-self: flex-start; }
@@ -170,6 +215,12 @@
 .concierge-body .ai-chat-box {
   height: 400px; display: flex; flex-direction: column; padding: 0; overflow: hidden;
 }
+@media (max-width: 640px) {
+  .concierge-body .ai-chat-box {
+    height: 500px;
+  }
+}
+
 .concierge-body .ai-chat-box input {
   background: rgba(255, 255, 255, 0.05); border: 1px solid var(--et-border-color);
   color: white; padding: 10px 16px; border-radius: 8px; outline: none;
@@ -177,10 +228,24 @@
 .concierge-body .ai-chat-box input:focus { border-color: var(--et-accent); }
 
 /* ── Modals ── */
+.concierge-body .mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .concierge-body .mobile-bottom-nav {
+    display: flex !important;
+  }
+  .concierge-body .container {
+    padding-bottom: 80px; /* Space for bottom nav */
+  }
+}
+
 .concierge-body .modal-overlay {
   position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7);
   display: flex; align-items: center; justify-content: center; z-index: 1000;
   opacity: 0; pointer-events: none; transition: all 0.3s; backdrop-filter: blur(4px);
+  padding: 20px;
 }
 .concierge-body .modal-overlay.open { opacity: 1; pointer-events: auto; }
 .concierge-body .modal-wrapper {
@@ -188,6 +253,18 @@
   border-radius: 16px; padding: 32px; width: 100%; max-width: 450px;
   position: relative; box-shadow: var(--et-shadow);
 }
+@media (max-width: 640px) {
+  .concierge-body .modal-wrapper {
+    padding: 24px 16px;
+  }
+  .concierge-body .modal-actions {
+    flex-direction: column;
+  }
+  .concierge-body .modal-actions button {
+    width: 100%;
+  }
+}
+
 .concierge-body .modal-close {
   position: absolute; top: 16px; right: 16px; background: none; border: none;
   color: var(--et-text-secondary); cursor: pointer; font-size: 20px;

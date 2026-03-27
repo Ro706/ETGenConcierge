@@ -230,12 +230,8 @@ const SYMBOL_MAP: Record<string, { yahoo: string, twelve: string, name: string, 
 
 const RANGE_OPTIONS = [
   { label: "1D", range: "1d", interval: "2m" },
-  { label: "5D", range: "5d", interval: "15m" },
   { label: "8D", range: "8d", interval: "1m" },
   { label: "1M", range: "1mo", interval: "1d" },
-  { label: "6M", range: "6mo", interval: "1d" },
-  { label: "1Y", range: "1y", interval: "1wk" },
-  { label: "5Y", range: "5y", interval: "1mo" },
 ];
 
 const DashboardIndex = ({ defaultSection }: IndexProps) => {
@@ -247,13 +243,20 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
   const [apiKeys, setApiKeys] = useState({
     gemini: import.meta.env.VITE_GEMINI_KEY || '',
     news: import.meta.env.VITE_NEWS_KEY || '',
-    twelveData: import.meta.env.VITE_TWELVE_DATA_KEY || ''
+    twelveData: import.meta.env.VITE_TWELVE_DATA_KEY || '',
+    marketaux: import.meta.env.VITE_Marketaux_API_KEY || ''
   });
   const [marketData, setMarketData] = useState<MarketItem[]>([]);
   const [marketSparklines, setMarketSparklines] = useState<Record<string, any[]>>({});
   const [marketGraphData, setMarketGraphData] = useState<any[]>([]);
   const [activeGraphSymbol, setActiveGraphSymbol] = useState("NIFTY 50");
-  const [activeGraphRange, setActiveGraphRange] = useState(RANGE_OPTIONS[2]); // 8D default
+  const [activeGraphRange, setActiveGraphRange] = useState(RANGE_OPTIONS[1]);
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 8);
+    return d.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [marketRange, setMarketRange] = useState<{start: number, end: number, high: number, low: number} | null>(null);
   const [newsData, setNewsData] = useState<NewsItem[]>([]);
   const [webNews, setWebNews] = useState<NewsItem[]>([]);
@@ -595,11 +598,11 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
     if ((currentSection === 'dashboard' || currentSection === 'markets') && userProfile) {
       fetchMarketGraph();
     }
-  }, [currentSection, activeGraphSymbol, activeGraphRange, userProfile]);
+  }, [currentSection, activeGraphSymbol, startDate, endDate, userProfile]);
 
-  const fetchMarketGraph = async (symbolStr = activeGraphSymbol, rangeObj = activeGraphRange) => {
+  const fetchMarketGraph = async (symbolStr = activeGraphSymbol) => {
     const today = new Date().toDateString();
-    const cacheKey = `et_market_graph_${symbolStr}_${rangeObj.range}_${today}`;
+    const cacheKey = `et_market_graph_${symbolStr}_${activeGraphRange.range}_${today}`;
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached);
@@ -616,7 +619,8 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
     try {
       const symInfo = SYMBOL_MAP[symbolStr] || SYMBOL_MAP["NIFTY 50"];
       const symbol = symInfo.yahoo;
-      const url = `/api-yahoo/v8/finance/chart/${symbol}?interval=${rangeObj.interval}&range=${rangeObj.range}`;
+      
+      const url = `/api-yahoo/v8/finance/chart/${symbol}?range=${activeGraphRange.range}&interval=${activeGraphRange.interval}`;
       
       const response = await fetch(url);
       if (response.status === 429) {
@@ -644,7 +648,7 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
           
           const date = new Date(ts * 1000);
           let name = date.toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-          if (rangeObj.range === '1d' || rangeObj.range === '5d' || rangeObj.range === '8d') {
+          if (activeGraphRange.range === '1d' || activeGraphRange.range === '5d' || activeGraphRange.range === '8d') {
              name = date.toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
           } else {
              name = date.toLocaleString('en-IN', { month: 'short', day: 'numeric' });
@@ -654,9 +658,9 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
             name,
             timestamp: ts,
             value: close,
-            open: quotes.open[i],
-            high: quotes.high[i],
-            low: quotes.low[i],
+            open: quotes.open[i] ?? close,
+            high: quotes.high[i] ?? close,
+            low: quotes.low[i] ?? close,
             gain: close - baselineVal,
             percentage: ((close - baselineVal) / baselineVal) * 100
           };
@@ -688,22 +692,41 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
   };
 
   const fetchNews = async () => {
-    // Check cache to avoid 429
+    // Check cache to avoid 429 - updated key to v3 to force refresh
     const today = new Date().toDateString();
-    const cacheKey = `et_news_${today}`;
+    const cacheKey = `et_news_v3_${today}`;
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached);
-      setNewsData(parsed.news);
-      setRelevanceNotes(parsed.notes);
+      setNewsData(parsed.news || []);
+      setWebNews(parsed.webNews || []);
+      setRelevanceNotes(parsed.notes || {});
       setIsNewsLoading(false);
       return;
     }
 
     setIsNewsLoading(true);
     let articles: NewsItem[] = [];
+    let webArticles: NewsItem[] = [];
     let aiNotes: Record<number, string> = {};
 
+    if (apiKeys.marketaux) {
+      try {
+        const url = `https://api.marketaux.com/v1/news/all?symbols=TSLA,AMZN,MSFT&filter_entities=true&language=en&api_token=${apiKeys.marketaux}`;
+        const r = await fetch(url);
+        const data = await r.json();
+        if (data.data && Array.isArray(data.data)) {
+          webArticles = data.data.map((a: any) => ({
+            title: a.title, 
+            source: a.source || 'Marketaux', 
+            time: new Date(a.published_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }), 
+            url: a.url || '#'
+          }));
+        }
+      } catch (error) { console.error("Error fetching Marketaux news:", error); }
+    }
+    
+    // Fetch personalized news from thenewsapi as well for "Today's picks"
     if (apiKeys.news) {
       try {
         const sectors = userProfile?.sectors?.toLowerCase().replace(/ & /g, '+') || 'finance';
@@ -714,9 +737,11 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
             title: a.title, source: a.source || 'ET', time: new Date(a.published_at).toLocaleDateString(), url: a.url || '#'
           }));
         }
-      } catch (error) { console.error("Error fetching news:", error); }
+      } catch (error) { console.error("Error fetching personalized news:", error); }
     }
+
     setNewsData(articles);
+    setWebNews(webArticles);
     setIsNewsLoading(false);
 
     if (apiKeys.gemini && userProfile && articles.length > 0) {
@@ -736,7 +761,7 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
     }
 
     // Cache the full news data with notes
-    localStorage.setItem(cacheKey, JSON.stringify({ news: articles, notes: aiNotes }));
+    localStorage.setItem(cacheKey, JSON.stringify({ news: articles, webNews: webArticles, notes: aiNotes }));
   };
 
   const navigateTo = (section: string) => {
@@ -1270,27 +1295,7 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                         {SYMBOL_MAP[activeGraphSymbol]?.name} · {activeGraphRange.label} View
                       </div>
                     </div>
-                    <div className="range-selector" style={{display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px'}}>
-                      {RANGE_OPTIONS.map(opt => (
-                        <button 
-                          key={opt.label}
-                          onClick={() => setActiveGraphRange(opt)}
-                          style={{
-                            background: activeGraphRange.label === opt.label ? 'var(--et-accent)' : 'transparent',
-                            color: activeGraphRange.label === opt.label ? 'white' : 'var(--et-text-secondary)',
-                            border: 'none',
-                            borderRadius: '6px',
-                            padding: '4px 10px',
-                            fontSize: '11px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
+
                   </div>
 
                   <div className="symbol-selector" style={{display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none'}}>
@@ -1409,43 +1414,44 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                         content={
                           <ChartTooltipContent
                             indicator="line"
-                            labelFormatter={(value) => {
-                              return <span className="font-bold">{value}</span>;
-                            }}
-                            formatter={(value, name, item) => (
-                              <div className="flex flex-col gap-2 min-w-[140px]">
-                                <div className="flex items-center justify-between gap-4">
-                                  <span className="text-muted-foreground">PRICE</span>
-                                  <span className="font-mono font-bold">
-                                    {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}
-                                    {Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                  </span>
-                                </div>
-                                
-                                {item.payload.open !== undefined && (
+                            labelFormatter={(value) => <span className="font-bold">{value}</span>}
+                            formatter={(value, name, item) => {
+                              const p = item.payload || {};
+                              const symbol = SYMBOL_MAP[activeGraphSymbol] || { currency: 'INR' };
+                              const curr = symbol.currency === 'INR' ? '₹' : '$';
+                              
+                              return (
+                                <div className="flex flex-col gap-2 min-w-[140px] text-white">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <span className="text-muted-foreground text-[10px] uppercase">Price</span>
+                                    <span className="font-mono font-bold">
+                                      {curr}{Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                    </span>
+                                  </div>
+                                  
                                   <div className="grid grid-cols-1 gap-y-1 text-[10px] border-t border-white/10 pt-2">
                                     <div className="flex justify-between gap-2">
                                       <span className="text-muted-foreground uppercase">Open</span>
-                                      <span className="font-mono">{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{item.payload.open.toLocaleString('en-IN')}</span>
+                                      <span className="font-mono">{curr}{(p.open || 0).toLocaleString('en-IN')}</span>
                                     </div>
                                     <div className="flex justify-between gap-2">
                                       <span className="text-muted-foreground uppercase">High</span>
-                                      <span className="font-mono text-et-success">{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{item.payload.high.toLocaleString('en-IN')}</span>
+                                      <span className="font-mono text-et-success">{curr}{(p.high || 0).toLocaleString('en-IN')}</span>
                                     </div>
                                     <div className="flex justify-between gap-2">
                                       <span className="text-muted-foreground uppercase">Low</span>
-                                      <span className="font-mono text-et-danger">{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{item.payload.low.toLocaleString('en-IN')}</span>
+                                      <span className="font-mono text-et-danger">{curr}{(p.low || 0).toLocaleString('en-IN')}</span>
                                     </div>
                                     <div className="flex justify-between gap-2">
                                       <span className="text-muted-foreground uppercase">Change</span>
-                                      <span style={{ color: item.payload.gain >= 0 ? 'var(--et-success)' : 'var(--et-danger)' }} className="font-bold">
-                                        {item.payload.percentage.toFixed(2)}%
+                                      <span style={{ color: (p.gain || 0) >= 0 ? 'var(--et-success)' : 'var(--et-danger)' }} className="font-bold">
+                                        {(p.percentage || 0).toFixed(2)}%
                                       </span>
                                     </div>
                                   </div>
-                                )}
-                              </div>
-                            )}
+                                </div>
+                              );
+                            }}
                           />
                         }
                       />
@@ -1465,6 +1471,7 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                       )}
                       <Area
                         dataKey="value"
+                        name="value"
                         type="linear"
 
                         fill="url(#fillPrice)"
@@ -1736,26 +1743,6 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                               {SYMBOL_MAP[activeGraphSymbol]?.name} · {activeGraphRange.label} Chart
                             </div>
                           </div>
-                          <div className="range-selector" style={{display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px'}}>
-                            {RANGE_OPTIONS.map(opt => (
-                              <button 
-                                key={opt.label}
-                                onClick={() => setActiveGraphRange(opt)}
-                                style={{
-                                  background: activeGraphRange.label === opt.label ? 'var(--et-accent)' : 'transparent',
-                                  color: activeGraphRange.label === opt.label ? 'white' : 'var(--et-text-secondary)',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  padding: '4px 10px',
-                                  fontSize: '11px',
-                                  fontWeight: 'bold',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                {opt.label}
-                              </button>
-                            ))}
-                          </div>
                         </div>
                       </div>
 
@@ -1792,10 +1779,38 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                             <ChartTooltip 
                               content={
                                 <ChartTooltipContent 
-                                  formatter={(value) => (
-                                    <div className="flex justify-between gap-4 min-w-[120px]">
-                                      <span className="text-muted-foreground">PRICE</span>
-                                      <span className="font-mono font-bold">{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                  formatter={(value, name, item) => (
+                                    <div className="flex flex-col gap-2 min-w-[140px]">
+                                      <div className="flex items-center justify-between gap-4">
+                                        <span className="text-muted-foreground">PRICE</span>
+                                        <span className="font-mono font-bold">
+                                          {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}
+                                          {Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                        </span>
+                                      </div>
+                                      
+                                      {item.payload.open != null && (
+                                        <div className="grid grid-cols-1 gap-y-1 text-[10px] border-t border-white/10 pt-2">
+                                          <div className="flex justify-between gap-2">
+                                            <span className="text-muted-foreground uppercase">Open</span>
+                                            <span className="font-mono">{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{item.payload.open.toLocaleString('en-IN')}</span>
+                                          </div>
+                                          <div className="flex justify-between gap-2">
+                                            <span className="text-muted-foreground uppercase">High</span>
+                                            <span className="font-mono text-et-success">{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{item.payload.high.toLocaleString('en-IN')}</span>
+                                          </div>
+                                          <div className="flex justify-between gap-2">
+                                            <span className="text-muted-foreground uppercase">Low</span>
+                                            <span className="font-mono text-et-danger">{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{item.payload.low.toLocaleString('en-IN')}</span>
+                                          </div>
+                                          <div className="flex justify-between gap-2">
+                                            <span className="text-muted-foreground uppercase">Change</span>
+                                            <span style={{ color: item.payload.gain >= 0 ? 'var(--et-success)' : 'var(--et-danger)' }} className="font-bold">
+                                              {item.payload.percentage.toFixed(2)}%
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 />
@@ -1803,6 +1818,7 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                             />
                             <Area
                               dataKey="value"
+                              name="value"
                               type="linear"
  fill="url(#fillPriceMarkets)" stroke="var(--color-value)" strokeWidth={2} />
                           </AreaChart>
@@ -1824,10 +1840,7 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                         <th style={{padding: '16px 20px'}}>Asset</th>
                         <th style={{padding: '16px 20px'}}>Price</th>
                         <th style={{padding: '16px 20px'}}>Change</th>
-                        <th style={{padding: '16px 20px'}}>Day Range</th>
-                        <th style={{padding: '16px 20px'}}>52W Range</th>
                         <th style={{padding: '16px 20px'}}>Volume</th>
-                        <th style={{padding: '16px 20px'}}>Market Cap</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1860,28 +1873,7 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                               {d.change}
                             </div>
                           </td>
-                          <td style={{padding: '16px 20px', fontSize: '12px'}}>
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
-                              <div style={{display: 'flex', justifyContent: 'space-between', gap: '10px'}}>
-                                <span style={{color: 'var(--et-text-secondary)'}}>L:</span> {d.low}
-                              </div>
-                              <div style={{display: 'flex', justifyContent: 'space-between', gap: '10px'}}>
-                                <span style={{color: 'var(--et-text-secondary)'}}>H:</span> {d.high}
-                              </div>
-                            </div>
-                          </td>
-                          <td style={{padding: '16px 20px', fontSize: '12px'}}>
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
-                              <div style={{display: 'flex', justifyContent: 'space-between', gap: '10px'}}>
-                                <span style={{color: 'var(--et-text-secondary)'}}>L:</span> {d.low52}
-                              </div>
-                              <div style={{display: 'flex', justifyContent: 'space-between', gap: '10px'}}>
-                                <span style={{color: 'var(--et-text-secondary)'}}>H:</span> {d.high52}
-                              </div>
-                            </div>
-                          </td>
                           <td style={{padding: '16px 20px', fontSize: '13px', color: 'rgba(255,255,255,0.8)'}}>{d.volume}</td>
-                          <td style={{padding: '16px 20px', fontSize: '13px', color: 'rgba(255,255,255,0.8)'}}>{d.marketCap}</td>
                         </tr>
                       ))}
                     </tbody>

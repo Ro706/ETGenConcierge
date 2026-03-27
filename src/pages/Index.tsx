@@ -658,9 +658,9 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
             name,
             timestamp: ts,
             value: close,
-            open: quotes.open[i] ?? close,
-            high: quotes.high[i] ?? close,
-            low: quotes.low[i] ?? close,
+            open: (quotes.open && quotes.open[i]) ?? close,
+            high: (quotes.high && quotes.high[i]) ?? close,
+            low: (quotes.low && quotes.low[i]) ?? close,
             gain: close - baselineVal,
             percentage: ((close - baselineVal) / baselineVal) * 100
           };
@@ -1036,7 +1036,7 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
   };
 
   return (
-    <div className={`concierge-body`}>
+    <div className={`concierge-body dark`}>
       {/* Service AI Advisor Modal */}
       <div className={`modal-overlay ${isServiceChatOpen ? 'open' : ''}`}>
         <div className="modal modal-wrapper" style={{ maxWidth: '600px', height: '80vh', display: 'flex', flexDirection: 'column', padding: 0 }}>
@@ -1416,36 +1416,44 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                             indicator="line"
                             labelFormatter={(value) => <span className="font-bold">{value}</span>}
                             formatter={(value, name, item) => {
-                              const p = item.payload || {};
+                              const p = item?.payload;
+                              if (!p) return null;
                               const symbol = SYMBOL_MAP[activeGraphSymbol] || { currency: 'INR' };
                               const curr = symbol.currency === 'INR' ? '₹' : '$';
+                              const isPositive = (p.gain || 0) >= 0;
                               
                               return (
-                                <div className="flex flex-col gap-2 min-w-[140px] text-white">
+                                <div className="flex flex-col gap-2 min-w-[150px] p-1 text-white">
                                   <div className="flex items-center justify-between gap-4">
-                                    <span className="text-muted-foreground text-[10px] uppercase">Price</span>
-                                    <span className="font-mono font-bold">
-                                      {curr}{Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                    <span className="text-gray-400 text-[10px] uppercase font-bold">Live Price</span>
+                                    <span className="font-mono font-bold text-sm">
+                                      {curr}{Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                     </span>
                                   </div>
                                   
-                                  <div className="grid grid-cols-1 gap-y-1 text-[10px] border-t border-white/10 pt-2">
-                                    <div className="flex justify-between gap-2">
-                                      <span className="text-muted-foreground uppercase">Open</span>
-                                      <span className="font-mono">{curr}{(p.open || 0).toLocaleString('en-IN')}</span>
+                                  <div className="grid grid-cols-1 gap-y-1.5 text-[11px] border-t border-white/10 pt-2.5">
+                                    <div className="flex justify-between gap-3">
+                                      <span className="text-gray-400 uppercase">Open</span>
+                                      <span className="font-mono text-gray-200">
+                                        {curr}{(p.open ?? value ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                      </span>
                                     </div>
-                                    <div className="flex justify-between gap-2">
-                                      <span className="text-muted-foreground uppercase">High</span>
-                                      <span className="font-mono text-et-success">{curr}{(p.high || 0).toLocaleString('en-IN')}</span>
+                                    <div className="flex justify-between gap-3">
+                                      <span className="text-gray-400 uppercase">High</span>
+                                      <span className="font-mono" style={{ color: '#10B981' }}>
+                                        {curr}{(p.high ?? value ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                      </span>
                                     </div>
-                                    <div className="flex justify-between gap-2">
-                                      <span className="text-muted-foreground uppercase">Low</span>
-                                      <span className="font-mono text-et-danger">{curr}{(p.low || 0).toLocaleString('en-IN')}</span>
+                                    <div className="flex justify-between gap-3">
+                                      <span className="text-gray-400 uppercase">Low</span>
+                                      <span className="font-mono" style={{ color: '#EF4444' }}>
+                                        {curr}{(p.low ?? value ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                      </span>
                                     </div>
-                                    <div className="flex justify-between gap-2">
-                                      <span className="text-muted-foreground uppercase">Change</span>
-                                      <span style={{ color: (p.gain || 0) >= 0 ? 'var(--et-success)' : 'var(--et-danger)' }} className="font-bold">
-                                        {(p.percentage || 0).toFixed(2)}%
+                                    <div className="flex justify-between gap-3 border-t border-white/5 pt-1.5 mt-0.5">
+                                      <span className="text-gray-400 uppercase font-bold">Day Change</span>
+                                      <span style={{ color: isPositive ? '#10B981' : '#EF4444' }} className="font-bold font-mono">
+                                        {isPositive ? '+' : ''}{(p.percentage || 0).toFixed(2)}%
                                       </span>
                                     </div>
                                   </div>
@@ -1779,40 +1787,51 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                             <ChartTooltip 
                               content={
                                 <ChartTooltipContent 
-                                  formatter={(value, name, item) => (
-                                    <div className="flex flex-col gap-2 min-w-[140px]">
-                                      <div className="flex items-center justify-between gap-4">
-                                        <span className="text-muted-foreground">PRICE</span>
-                                        <span className="font-mono font-bold">
-                                          {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}
-                                          {Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                        </span>
-                                      </div>
-                                      
-                                      {item.payload.open != null && (
-                                        <div className="grid grid-cols-1 gap-y-1 text-[10px] border-t border-white/10 pt-2">
-                                          <div className="flex justify-between gap-2">
-                                            <span className="text-muted-foreground uppercase">Open</span>
-                                            <span className="font-mono">{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{item.payload.open.toLocaleString('en-IN')}</span>
+                                  formatter={(value, name, item) => {
+                                    const p = item?.payload;
+                                    if (!p) return null;
+                                    const symbol = SYMBOL_MAP[activeGraphSymbol] || { currency: 'INR' };
+                                    const curr = symbol.currency === 'INR' ? '₹' : '$';
+                                    const isPositive = (p.gain || 0) >= 0;
+                                    
+                                    return (
+                                      <div className="flex flex-col gap-2 min-w-[150px] p-1 text-white">
+                                        <div className="flex items-center justify-between gap-4">
+                                          <span className="text-gray-400 text-[10px] uppercase font-bold">Live Price</span>
+                                          <span className="font-mono font-bold text-sm">
+                                            {curr}{Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                          </span>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 gap-y-1.5 text-[11px] border-t border-white/10 pt-2.5">
+                                          <div className="flex justify-between gap-3">
+                                            <span className="text-gray-400 uppercase">Open</span>
+                                            <span className="font-mono text-gray-200">
+                                              {curr}{(p.open ?? value ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                            </span>
                                           </div>
-                                          <div className="flex justify-between gap-2">
-                                            <span className="text-muted-foreground uppercase">High</span>
-                                            <span className="font-mono text-et-success">{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{item.payload.high.toLocaleString('en-IN')}</span>
+                                          <div className="flex justify-between gap-3">
+                                            <span className="text-gray-400 uppercase">High</span>
+                                            <span className="font-mono" style={{ color: '#10B981' }}>
+                                              {curr}{(p.high ?? value ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                            </span>
                                           </div>
-                                          <div className="flex justify-between gap-2">
-                                            <span className="text-muted-foreground uppercase">Low</span>
-                                            <span className="font-mono text-et-danger">{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{item.payload.low.toLocaleString('en-IN')}</span>
+                                          <div className="flex justify-between gap-3">
+                                            <span className="text-gray-400 uppercase">Low</span>
+                                            <span className="font-mono" style={{ color: '#EF4444' }}>
+                                              {curr}{(p.low ?? value ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                            </span>
                                           </div>
-                                          <div className="flex justify-between gap-2">
-                                            <span className="text-muted-foreground uppercase">Change</span>
-                                            <span style={{ color: item.payload.gain >= 0 ? 'var(--et-success)' : 'var(--et-danger)' }} className="font-bold">
-                                              {item.payload.percentage.toFixed(2)}%
+                                          <div className="flex justify-between gap-3 border-t border-white/5 pt-1.5 mt-0.5">
+                                            <span className="text-gray-400 uppercase font-bold">Day Change</span>
+                                            <span style={{ color: isPositive ? '#10B981' : '#EF4444' }} className="font-bold font-mono">
+                                              {isPositive ? '+' : ''}{(p.percentage || 0).toFixed(2)}%
                                             </span>
                                           </div>
                                         </div>
-                                      )}
-                                    </div>
-                                  )}
+                                      </div>
+                                    );
+                                  }}
                                 />
                               }
                             />

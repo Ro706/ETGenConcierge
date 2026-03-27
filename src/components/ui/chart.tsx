@@ -148,7 +148,7 @@ const ChartTooltipContent = React.forwardRef<
       return null;
     }
 
-    const nestLabel = payload.length === 1 && indicator !== "dot";
+    const nestLabel = payload.length === 1 && indicator !== "dot" && !labelFormatter;
 
     return (
       <div
@@ -173,8 +173,8 @@ const ChartTooltipContent = React.forwardRef<
                   indicator === "dot" && "items-center",
                 )}
               >
-                {formatter && item?.value !== undefined && item.name ? (
-                  formatter(item.value, item.name, item, index, item.payload)
+                {formatter && item?.value !== undefined ? (
+                  formatter(item.value, item.name || key, item, index, item.payload)
                 ) : (
                   <>
                     {itemConfig?.icon ? (
@@ -205,7 +205,7 @@ const ChartTooltipContent = React.forwardRef<
                     >
                       <div className="grid gap-1.5">
                         {nestLabel ? tooltipLabel : null}
-                        <span className="text-muted-foreground">{itemConfig?.label || item.name}</span>
+                        <span className="text-muted-foreground">{itemConfig?.label || item.name || key}</span>
                       </div>
                       {item.value && (
                         <span className="font-mono font-medium tabular-nums text-foreground">
@@ -214,6 +214,11 @@ const ChartTooltipContent = React.forwardRef<
                       )}
                     </div>
                   </>
+                )}
+                {nestLabel && formatter && (
+                   <div className="w-full mt-1 border-t border-border/50 pt-1">
+                      {tooltipLabel}
+                   </div>
                 )}
               </div>
             );

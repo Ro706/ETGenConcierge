@@ -446,7 +446,25 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
     }
   }, [user, authLoading, defaultSection, navigate]);
 
+  const cleanupOldCache = () => {
+    try {
+      const today = new Date().toDateString();
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('et_market_') && !key.includes(today)) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      console.log(`Cleaned up ${keysToRemove.length} old cache entries.`);
+    } catch (e) {
+      console.error("Cache cleanup failed", e);
+    }
+  };
+
   useEffect(() => {
+    cleanupOldCache();
     const p = localStorage.getItem('et_profile');
     if (p) {
       const parsedProfile = JSON.parse(p);
@@ -779,10 +797,12 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
   }, [currentSection, activeGraphSymbol, startDate, endDate, userProfile]);
 
   const fetchMarketGraph = async (symbolStr = activeGraphSymbol) => {
+    console.log("Fetching graph for:", symbolStr);
     const today = new Date().toDateString();
     const cacheKey = `et_market_graph_${symbolStr}_${activeGraphRange.range}_${today}`;
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
+      console.log("Using cached graph for:", symbolStr);
       const parsed = JSON.parse(cached);
       setMarketGraphData(parsed.data);
       setPreviousClose(parsed.prev);
@@ -791,9 +811,9 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
     }
 
     if (checkLockout()) return;
-    if (isFetchingRef.current) return;
-
-    isFetchingRef.current = true;
+    
+    // We remove the isFetchingRef check here or make it symbol specific to avoid blocking
+    // Actually better to just use a local fetching flag for the graph
     try {
       const symInfo = SYMBOL_MAP[symbolStr] || SYMBOL_MAP["NIFTY 50"];
       const symbol = symInfo.yahoo;
@@ -803,11 +823,10 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
       const response = await fetch(url);
       if (response.status === 429) {
         setLockout(10);
-        isFetchingRef.current = false;
         return;
       }
       if (!response.ok) {
-        isFetchingRef.current = false;
+        console.error("Graph fetch failed for", symbolStr);
         return;
       }
 
@@ -819,6 +838,12 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
         const quotes = result.indicators.quote[0];
         const meta = result.meta;
         const baselineVal = meta.previousClose || (quotes.close ? quotes.close[0] : 0);
+
+        if (!timestamps || timestamps.length === 0) {
+          console.warn("No timestamps for", symbolStr);
+          setMarketGraphData([]);
+          return;
+        }
 
         const graph = timestamps.map((ts: number, i: number) => {
           const close = quotes.close[i];
@@ -844,19 +869,23 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
           };
         }).filter(Boolean);
 
-        setMarketGraphData(graph);
-        setPreviousClose(baselineVal);
-        
-        const values = graph.map((v: any) => v.value);
-        const range = {
-          start: graph[0].value,
-          end: graph[graph.length - 1].value,
-          high: meta.regularMarketDayHigh || Math.max(...values),
-          low: meta.regularMarketDayLow || Math.min(...values)
-        };
-        setMarketRange(range);
-        
-        localStorage.setItem(cacheKey, JSON.stringify({ data: graph, prev: baselineVal, range }));
+        if (graph.length > 0) {
+          setMarketGraphData(graph);
+          setPreviousClose(baselineVal);
+          
+          const values = (graph as any[]).map((v: any) => v.value);
+          const range = {
+            start: graph[0].value,
+            end: graph[graph.length - 1].value,
+            high: meta.regularMarketDayHigh || Math.max(...values),
+            low: meta.regularMarketDayLow || Math.min(...values)
+          };
+          setMarketRange(range);
+          
+          localStorage.setItem(cacheKey, JSON.stringify({ data: graph, prev: baselineVal, range }));
+        } else {
+          setMarketGraphData([]);
+        }
         return;
       }
       
@@ -1528,7 +1557,7 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
               </div>
 
               {/* Analysis Graph */}
-              <div className="flex h-fit flex-col rounded-xl border border-white/5 bg-[#112240] p-4 md:p-6 lg:col-span-8">
+              <div id="market-graph-section" className="flex h-fit flex-col rounded-xl border border-white/5 bg-[#112240] p-4 md:p-6 lg:col-span-8">
                 <div className="mb-6 flex flex-col gap-4">
                   <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
                     <div>
@@ -1698,10 +1727,22 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                         <div 
                           key={i} 
                           onClick={() => {
-                            const found = Object.keys(SYMBOL_MAP).find(k => SYMBOL_MAP[k].yahoo === d.symbol || k === d.name);
-                            if (found) setActiveGraphSymbol(found);
+                            const found = Object.keys(SYMBOL_MAP).find(k => 
+                              SYMBOL_MAP[k].yahoo === d.symbol || 
+                              SYMBOL_MAP[k].id === d.name ||
+                              k === d.name
+                            );
+                            if (found) {
+                              setActiveGraphSymbol(found);
+                              // Scroll to graph section
+                              const graphElem = document.getElementById('market-graph-section');
+                              if (graphElem) {
+                                graphElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }
+                              showToast(`Viewing ${found} analysis`);
+                            }
                           }}
-                          className="group relative flex cursor-pointer flex-col gap-2 rounded-xl border border-white/5 bg-[#112240] p-4 transition-all hover:border-orange-500/50"
+                          className="group relative flex cursor-pointer flex-col gap-2 rounded-xl border border-white/5 bg-[#112240] p-4 transition-all hover:border-orange-500/50 hover:bg-white/5"
                         >
                           <div className="flex items-center justify-between">
                             <div className="text-xs font-bold text-slate-300 group-hover:text-white">{d.name}</div>

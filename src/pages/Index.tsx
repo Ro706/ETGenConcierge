@@ -8,8 +8,14 @@ import {
   ResponsiveContainer, 
   AreaChart, 
   Area,
-  ReferenceLine
+  ReferenceLine,
+  ReferenceArea
 } from 'recharts';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import "./Concierge.css";
 import { useAuth } from "@/contexts/AuthContext";
 import { Pencil, Check, X } from "lucide-react";
@@ -35,11 +41,22 @@ interface ChatMessage {
 
 interface MarketItem {
   name: string;
+  symbol?: string;
   price: string;
   change: string;
+  percentChange: string;
   up: boolean;
   type?: string;
   mock?: boolean;
+  open?: string;
+  high?: string;
+  low?: string;
+  volume?: string;
+  prevClose?: string;
+  marketCap?: string;
+  low52?: string;
+  high52?: string;
+  currency?: string;
 }
 
 interface NewsItem {
@@ -178,64 +195,9 @@ const FinancialHealthRings = ({ scores }: { scores: Record<string, number> }) =>
   );
 };
 
-// --- Mocks ---
-const MOCK_GRAPH_DATA = [
-  { name: 'Mar 15', value: 21800, gain: 0, percentage: 0 },
-  { name: 'Mar 16', value: 22100, gain: 300, percentage: 1.38 },
-  { name: 'Mar 17', value: 21950, gain: 150, percentage: 0.69 },
-  { name: 'Mar 18', value: 22300, gain: 500, percentage: 2.29 },
-  { name: 'Mar 19', value: 22500, gain: 700, percentage: 3.21 },
-  { name: 'Mar 20', value: 22400, gain: 600, percentage: 2.75 },
-  { name: 'Mar 21', value: 22800, gain: 1000, percentage: 4.59 },
-  { name: 'Mar 22', value: 22912.4, gain: 1112.4, percentage: 5.10 },
-  { name: 'Mar 23', value: 22950, gain: 1150, percentage: 5.28 },
-  { name: 'Mar 24', value: 23400, gain: 1600, percentage: 7.34 },
-  { name: 'Mar 25', value: 23306.45, gain: 1506.45, percentage: 6.91 },
-];
-
-const MOCK_NEWS: NewsItem[] = [
-  { title: "RBI holds repo rate steady at 6.5% amid global uncertainty", source: "ET Markets", time: "2h ago", url: "#" },
-  { title: "Nifty 50 crosses 23,000 mark as IT stocks rally", source: "ET Markets", time: "3h ago", url: "#" },
-  { title: "HDFC Bank Q4 results: Net profit up 18% year-on-year", source: "ET Finance", time: "4h ago", url: "#" },
-  { title: "Sebi tightens F&O regulations for retail investors", source: "ET Markets", time: "5h ago", url: "#" },
-  { title: "SIP inflows hit record ₹25,000 crore in March 2026", source: "ET Wealth", time: "6h ago", url: "#" },
-  { title: "Budget 2026: Key changes to new tax regime explained", source: "ET Money", time: "7h ago", url: "#" }
-];
-
-const MOCK_MARKET: MarketItem[] = [
-  { name: "RELIANCE", type: "Stock", price: "₹2,847", change: "+1.2%", up: true, mock: true },
-  { name: "TCS", type: "Stock", price: "₹3,912", change: "+0.8%", up: true, mock: true },
-  { name: "INFY", type: "Stock", price: "₹1,623", change: "+0.5%", up: true, mock: true },
-  { name: "HDFCBANK", type: "Stock", price: "₹1,745", change: "+1.1%", up: true, mock: true },
-  { name: "USD/INR", type: "Forex", price: "₹83.52", change: "-0.1%", up: false, mock: true },
-  { name: "BTC/USD", type: "Crypto", price: "$64,250", change: "+2.4%", up: true, mock: true }
-];
-
-const MOCK_WEB_NEWS: NewsItem[] = [
-  { title: "Nifty 50 closes at 23,306, up 1.72%; Shriram Finance & Trent lead gainers", source: "Business Standard", time: "Live", url: "https://www.business-standard.com" },
-  { title: "Geopolitical de-escalation: US-Iran ceasefire hopes boost global markets", source: "Financial Express", time: "1h ago", url: "https://www.financialexpress.com" },
-  { title: "Crude oil slump: Brent falls below $98, easing India's inflation concerns", source: "Economic Times", time: "2h ago", url: "https://economictimes.indiatimes.com" },
-  { title: "Sectoral Watch: Consumer Durables and Realty indices rally over 3%", source: "Upstox", time: "3h ago", url: "https://upstox.com" },
-  { title: "Market Holiday: NSE/BSE to remain closed on March 26 for Ram Navami", source: "EquityMaster", time: "4h ago", url: "https://www.equitymaster.com" },
-  { title: "IT Stocks lag behind: Demand concerns weigh on TCS and Tech Mahindra", source: "Angel One", time: "5h ago", url: "https://www.angelone.in" }
-];
-
-const SERVICES: ServiceItem[] = [
-  { id: "home-loan", title: "🏠 Home Loan", best: "Best for: Home buyers & upgraders", matchGoals: ["Buy a Home"] },
-  { id: "personal-loan", title: "💳 Personal Loan", best: "Best for: Emergency funds", matchGoals: ["Build Emergency Fund"] },
-  { id: "term-insurance", title: "🛡️ Term Insurance", best: "Best for: Family protection", matchGoals: ["Plan Retirement"] },
-  { id: "health-insurance", title: "🏥 Health Insurance", best: "Best for: Medical coverage", matchGoals: [] },
-  { id: "credit-card", title: "💎 Credit Card", best: "Best for: Rewards & cashback", matchGoals: [] },
-  { id: "mutual-fund-sip", title: "📈 Mutual Fund SIP", best: "Best for: Wealth builders", matchGoals: ["Grow Wealth", "Save Taxes"] }
-];
-
-const EVENTS: EventItem[] = [
-  { title: "ET Markets Masterclass", desc: "Learn equity investing from experts", date: "April 2026", matchSectors: ["Markets & Trading", "Banking & Finance"] },
-  { title: "ET Wealth Summit", desc: "India's biggest personal finance event", date: "May 2026", matchSectors: ["Economy & Policy", "Banking & Finance"] },
-  { title: "ET Startup Awards", desc: "Celebrating India's best startups", date: "June 2026", matchSectors: ["Tech & Startups"] },
-  { title: "ET CFO Conclave", desc: "Leadership in financial strategy", date: "July 2026", matchSectors: ["Economy & Policy", "Banking & Finance"] }
-];
-
+// --- Constants ---
+const SERVICES: ServiceItem[] = [];
+const EVENTS: EventItem[] = [];
 const ONBOARD_QUESTIONS = [
   { q: "Hi! I'm your ET Concierge 👋 What's your name?", options: null },
   { q: "Nice to meet you, {name}! What best describes you?", options: ["Student", "Salaried Professional", "Business Owner", "Investor", "Retiree"] },
@@ -256,7 +218,27 @@ interface IndexProps {
   defaultSection?: string;
 }
 
-const Index = ({ defaultSection }: IndexProps) => {
+const SYMBOL_MAP: Record<string, { yahoo: string, twelve: string, name: string, currency: string, id: string }> = {
+  "NIFTY 50": { id: "nifty", yahoo: "%5ENSEI", twelve: "NIFTY:NSE", name: "Nifty 50", currency: "INR" },
+  "RELIANCE": { id: "reliance", yahoo: "RELIANCE.NS", twelve: "RELIANCE:NSE", name: "Reliance Industries", currency: "INR" },
+  "TCS": { id: "tcs", yahoo: "TCS.NS", twelve: "TCS:NSE", name: "Tata Consultancy Services", currency: "INR" },
+  "INFY": { id: "infy", yahoo: "INFY.NS", twelve: "INFY:NSE", name: "Infosys", currency: "INR" },
+  "HDFCBANK": { id: "hdfc", yahoo: "HDFCBANK.NS", twelve: "HDFCBANK:NSE", name: "HDFC Bank", currency: "INR" },
+  "USD/INR": { id: "usdinr", yahoo: "USDINR=X", twelve: "USD/INR", name: "USD to INR", currency: "INR" },
+  "BTC/USD": { id: "btc", yahoo: "BTC-USD", twelve: "BTC/USD", name: "Bitcoin", currency: "USD" },
+};
+
+const RANGE_OPTIONS = [
+  { label: "1D", range: "1d", interval: "2m" },
+  { label: "5D", range: "5d", interval: "15m" },
+  { label: "8D", range: "8d", interval: "1m" },
+  { label: "1M", range: "1mo", interval: "1d" },
+  { label: "6M", range: "6mo", interval: "1d" },
+  { label: "1Y", range: "1y", interval: "1wk" },
+  { label: "5Y", range: "5y", interval: "1mo" },
+];
+
+const DashboardIndex = ({ defaultSection }: IndexProps) => {
   const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [currentSection, setCurrentSection] = useState(defaultSection || 'landing');
@@ -267,16 +249,22 @@ const Index = ({ defaultSection }: IndexProps) => {
     news: import.meta.env.VITE_NEWS_KEY || '',
     twelveData: import.meta.env.VITE_TWELVE_DATA_KEY || ''
   });
-  const [marketData, setMarketData] = useState<MarketItem[]>(MOCK_MARKET);
-  const [marketGraphData, setMarketGraphData] = useState<any[]>(MOCK_GRAPH_DATA);
+  const [marketData, setMarketData] = useState<MarketItem[]>([]);
+  const [marketSparklines, setMarketSparklines] = useState<Record<string, any[]>>({});
+  const [marketGraphData, setMarketGraphData] = useState<any[]>([]);
+  const [activeGraphSymbol, setActiveGraphSymbol] = useState("NIFTY 50");
+  const [activeGraphRange, setActiveGraphRange] = useState(RANGE_OPTIONS[2]); // 8D default
   const [marketRange, setMarketRange] = useState<{start: number, end: number, high: number, low: number} | null>(null);
-  const [newsData, setNewsData] = useState<NewsItem[]>(MOCK_NEWS);
-  const [webNews, setWebNews] = useState<NewsItem[]>(MOCK_WEB_NEWS);
+  const [newsData, setNewsData] = useState<NewsItem[]>([]);
+  const [webNews, setWebNews] = useState<NewsItem[]>([]);
   const [onboardStep, setOnboardStep] = useState(0);
   const [onboardAnswers, setOnboardAnswers] = useState<Record<string, string>>({});
   const [onboardMessages, setOnboardMessages] = useState<OnboardAnswer[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [isMarketLoading, setIsMarketLoading] = useState(true);
+  const [isNewsLoading, setIsNewsLoading] = useState(true);
+  const [previousClose, setPreviousClose] = useState<number | null>(22912.4);
   const [toasts, setToasts] = useState<string[]>([]);
   const [heroWord, setHeroWord] = useState("News");
   const [aiInput, setAiInput] = useState("");
@@ -294,9 +282,6 @@ const Index = ({ defaultSection }: IndexProps) => {
   const aiMessagesEndRef = useRef<HTMLDivElement>(null);
   
   const hasCheckedInitialRedirect = useRef(false);
-
-  const [isMarketLoading, setIsMarketLoading] = useState(true);
-  const [isNewsLoading, setIsNewsLoading] = useState(true);
 
   const Skeleton = ({ width, height, style }: { width?: string, height?: string, style?: any }) => (
     <div className="skeleton" style={{ width: width || '100%', height: height || '20px', borderRadius: '4px', ...style }}></div>
@@ -340,16 +325,48 @@ const Index = ({ defaultSection }: IndexProps) => {
 
   const [isBriefingLoading, setIsBriefingLoading] = useState(false);
 
+  const isFetchingRef = useRef(false);
+
+  const checkLockout = () => {
+    const lockout = localStorage.getItem('et_yahoo_lockout');
+    if (lockout) {
+      try {
+        const { expiry } = JSON.parse(lockout);
+        if (Date.now() < expiry) {
+          console.info("Yahoo API currently in lockout (429). Using cache.");
+          return true;
+        }
+        localStorage.removeItem('et_yahoo_lockout');
+      } catch (e) { localStorage.removeItem('et_yahoo_lockout'); }
+    }
+    return false;
+  };
+
+  const setLockout = (min = 5) => {
+    localStorage.setItem('et_yahoo_lockout', JSON.stringify({ expiry: Date.now() + (min * 60 * 1000) }));
+  };
+
   useEffect(() => {
     if (currentSection === 'dashboard' && userProfile) {
+      const load = async () => {
+        await fetchMarketData();
+        await new Promise(r => setTimeout(r, 500));
+        await fetchMarketGraph();
+        fetchNews();
+        calculateHealthScores(userProfile);
+        generateDailyAction(userProfile);
+        pregenerateBriefing(userProfile);
+      };
+      load();
+    }
+  }, [currentSection, userProfile]);
+
+  useEffect(() => {
+    if (currentSection === 'markets' && userProfile) {
       fetchMarketData();
       fetchMarketGraph();
-      fetchNews();
-      calculateHealthScores(userProfile);
-      generateDailyAction(userProfile);
-      pregenerateBriefing(userProfile);
     }
-  }, [currentSection, apiKeys, userProfile]);
+  }, [currentSection, activeGraphSymbol, activeGraphRange, userProfile]);
 
   useEffect(() => {
     onboardMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -463,70 +480,126 @@ const Index = ({ defaultSection }: IndexProps) => {
   };
 
   const fetchMarketData = async () => {
-    setIsMarketLoading(true);
-    if (!apiKeys.twelveData) {
-      setMarketData(MOCK_MARKET);
-      setPreviousClose(22912.4);
-      setMarketRange({
-        start: MOCK_GRAPH_DATA[0].value,
-        end: MOCK_GRAPH_DATA[MOCK_GRAPH_DATA.length - 1].value,
-        high: Math.max(...MOCK_GRAPH_DATA.map(v => v.value)),
-        low: Math.min(...MOCK_GRAPH_DATA.map(v => v.value))
-      });
+    if (isFetchingRef.current) return;
+
+    // Check cache first
+    const today = new Date().toDateString();
+    const cacheKey = `et_market_data_${today}`;
+    const cachedSpark = localStorage.getItem(`et_market_sparklines_${today}`);
+    const cached = localStorage.getItem(cacheKey);
+    
+    if (cached && cachedSpark) {
+      setMarketData(JSON.parse(cached));
+      setMarketSparklines(JSON.parse(cachedSpark));
       setIsMarketLoading(false);
       return;
     }
 
+    if (checkLockout()) {
+      setIsMarketLoading(false);
+      return;
+    }
+
+    isFetchingRef.current = true;
+    setIsMarketLoading(true);
+    
     try {
-      const symbols = "RELIANCE:NSE,TCS:NSE,INFY:NSE,HDFCBANK:NSE,USD/INR,BTC/USD,NIFTY:NSE";
-      const r = await fetch(`https://api.twelvedata.com/quote?symbol=${symbols}&apikey=${apiKeys.twelveData}`);
-      const data = await r.json();
-
+      const symbolsList = Object.keys(SYMBOL_MAP);
       const updated: MarketItem[] = [];
-      const quotes = data.status === 'error' ? null : data;
-      
-      if (quotes) {
-        Object.keys(quotes).forEach(sym => {
-          const q = quotes[sym];
-          if (q && q.symbol) {
-            const symUpper = q.symbol.toUpperCase();
-            
-            // Set previous close for graph if this is NIFTY
-            if (symUpper.includes("NIFTY")) {
-              setPreviousClose(parseFloat(q.previous_close));
-            }
+      const sparklines: Record<string, any[]> = {};
 
-            let type = "Stock";
-            if (symUpper.includes("USD/INR")) type = "Forex";
-            else if (symUpper.includes("BTC/USD")) type = "Crypto";
-
-            updated.push({
-              name: q.symbol.split(':')[0],
-              type,
-              price: (q.currency === 'INR' || q.symbol.includes('INR')) ? `₹${parseFloat(q.close).toLocaleString('en-IN')}` : `$${parseFloat(q.close).toLocaleString()}`,
-              change: `${parseFloat(q.percent_change) >= 0 ? '+' : ''}${parseFloat(q.percent_change).toFixed(2)}%`,
-              up: parseFloat(q.percent_change) >= 0
-            });
+      for (const key of symbolsList) {
+        if (checkLockout()) break;
+        const symInfo = SYMBOL_MAP[key];
+        
+        try {
+          // Use the chart API for EVERYTHING (Price + Sparkline)
+          const url = `/api-yahoo/v8/finance/chart/${symInfo.yahoo}?interval=1h&range=8d`;
+          const r = await fetch(url);
+          
+          if (r.status === 429) {
+            setLockout(10);
+            break;
           }
-        });
+
+          if (r.ok) {
+            const data = await r.json();
+            if (data.chart?.result?.[0]) {
+              const result = data.chart.result[0];
+              const meta = result.meta;
+              const quotes = result.indicators.quote[0];
+              const timestamps = result.timestamp || [];
+
+              const price = meta.regularMarketPrice;
+              const prevClose = meta.previousClose || (quotes.close ? quotes.close[0] : price);
+              const change = price - prevClose;
+              const percentChange = (change / prevClose) * 100;
+              const isUp = change >= 0;
+
+              const formatter = new Intl.NumberFormat(symInfo.currency === 'INR' ? 'en-IN' : 'en-US', {
+                style: 'currency',
+                currency: symInfo.currency,
+                maximumFractionDigits: 2
+              });
+
+              // Add to market data
+              updated.push({
+                name: symInfo.id,
+                symbol: symInfo.yahoo,
+                type: key.includes("/") ? (key.includes("BTC") ? "Crypto" : "Forex") : "Stock",
+                price: formatter.format(price),
+                change: `${isUp ? '+' : ''}${change.toFixed(2)}`,
+                percentChange: `${isUp ? '+' : ''}${percentChange.toFixed(2)}%`,
+                up: isUp,
+                open: formatter.format(meta.regularMarketOpen || 0),
+                high: formatter.format(meta.regularMarketDayHigh || 0),
+                low: formatter.format(meta.regularMarketDayLow || 0),
+                volume: (meta.regularMarketVolume || 0).toLocaleString(),
+                prevClose: formatter.format(prevClose),
+                marketCap: meta.marketCap ? meta.marketCap.toLocaleString() : 'N/A',
+                currency: symInfo.currency
+              });
+
+              // Process sparkline data
+              const sparklineData = timestamps.map((ts: number, i: number) => {
+                const val = quotes.close?.[i] ?? quotes.open?.[i] ?? price;
+                return { value: val };
+              }).filter((v: any) => v.value !== null && v.value !== undefined);
+              
+              sparklines[symInfo.id] = sparklineData.length > 0 ? sparklineData : [{ value: price }, { value: price }];
+            }
+          }
+          
+          // Wait 600ms between each symbol to be very gentle with Yahoo
+          await new Promise(res => setTimeout(res, 600));
+        } catch (err) {
+          console.error(`Error fetching ${key}:`, err);
+        }
       }
 
-      if (updated.length > 0) setMarketData(updated);
-      else setMarketData(MOCK_MARKET);
+      if (updated.length > 0) {
+        setMarketData(updated);
+        setMarketSparklines(sparklines);
+        localStorage.setItem(cacheKey, JSON.stringify(updated));
+        localStorage.setItem(`et_market_sparklines_${today}`, JSON.stringify(sparklines));
+      }
     } catch (error) {
       console.error("Error fetching market data:", error);
-      setMarketData(MOCK_MARKET);
     } finally {
       setIsMarketLoading(false);
+      isFetchingRef.current = false;
     }
   };
 
-  const [previousClose, setPreviousClose] = useState<number | null>(22912.4);
+  useEffect(() => {
+    if ((currentSection === 'dashboard' || currentSection === 'markets') && userProfile) {
+      fetchMarketGraph();
+    }
+  }, [currentSection, activeGraphSymbol, activeGraphRange, userProfile]);
 
-  const fetchMarketGraph = async () => {
-    // Check cache first to avoid too many requests
+  const fetchMarketGraph = async (symbolStr = activeGraphSymbol, rangeObj = activeGraphRange) => {
     const today = new Date().toDateString();
-    const cacheKey = `et_market_graph_${today}`;
+    const cacheKey = `et_market_graph_${symbolStr}_${rangeObj.range}_${today}`;
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached);
@@ -536,56 +609,81 @@ const Index = ({ defaultSection }: IndexProps) => {
       return;
     }
 
-    try {
-      // Prioritize Twelve Data for browser-friendly calls (no CORS issues like Yahoo)
-      if (apiKeys.twelveData) {
-        const symbol = "NIFTY:NSE"; 
-        const r2 = await fetch(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1h&outputsize=40&apikey=${apiKeys.twelveData}`);
-        const data2 = await r2.json();
+    if (checkLockout()) return;
+    if (isFetchingRef.current) return;
 
-        if (data2.values && data2.values.length > 0) {
-          const baselineVal = previousClose || parseFloat(data2.values[data2.values.length - 1].close);
-          const graph = data2.values.reverse().map((v: any) => {
-            const val = parseFloat(v.close);
-            const diff = val - baselineVal;
-            const pct = (diff / baselineVal) * 100;
-            return {
-              name: new Date(v.datetime).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit' }),
-              value: val,
-              gain: diff,
-              percentage: pct
-            };
-          });
-          setMarketGraphData(graph);
+    isFetchingRef.current = true;
+    try {
+      const symInfo = SYMBOL_MAP[symbolStr] || SYMBOL_MAP["NIFTY 50"];
+      const symbol = symInfo.yahoo;
+      const url = `/api-yahoo/v8/finance/chart/${symbol}?interval=${rangeObj.interval}&range=${rangeObj.range}`;
+      
+      const response = await fetch(url);
+      if (response.status === 429) {
+        setLockout(10);
+        isFetchingRef.current = false;
+        return;
+      }
+      if (!response.ok) {
+        isFetchingRef.current = false;
+        return;
+      }
+
+      const data = await response.json();
+      
+      if (data.chart && data.chart.result && data.chart.result[0]) {
+        const result = data.chart.result[0];
+        const timestamps = result.timestamp;
+        const quotes = result.indicators.quote[0];
+        const meta = result.meta;
+        const baselineVal = meta.previousClose || (quotes.close ? quotes.close[0] : 0);
+
+        const graph = timestamps.map((ts: number, i: number) => {
+          const close = quotes.close[i];
+          if (close === null || close === undefined) return null;
           
-          const values = graph.map(v => v.value);
-          const range = {
-            start: graph[0].value,
-            end: graph[graph.length - 1].value,
-            high: Math.max(...values),
-            low: Math.min(...values)
+          const date = new Date(ts * 1000);
+          let name = date.toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          if (rangeObj.range === '1d' || rangeObj.range === '5d' || rangeObj.range === '8d') {
+             name = date.toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          } else {
+             name = date.toLocaleString('en-IN', { month: 'short', day: 'numeric' });
+          }
+
+          return {
+            name,
+            timestamp: ts,
+            value: close,
+            open: quotes.open[i],
+            high: quotes.high[i],
+            low: quotes.low[i],
+            gain: close - baselineVal,
+            percentage: ((close - baselineVal) / baselineVal) * 100
           };
-          setMarketRange(range);
-          
-          // Cache results
-          localStorage.setItem(cacheKey, JSON.stringify({ data: graph, prev: baselineVal, range }));
-          return;
-        }
+        }).filter(Boolean);
+
+        setMarketGraphData(graph);
+        setPreviousClose(baselineVal);
+        
+        const values = graph.map((v: any) => v.value);
+        const range = {
+          start: graph[0].value,
+          end: graph[graph.length - 1].value,
+          high: meta.regularMarketDayHigh || Math.max(...values),
+          low: meta.regularMarketDayLow || Math.min(...values)
+        };
+        setMarketRange(range);
+        
+        localStorage.setItem(cacheKey, JSON.stringify({ data: graph, prev: baselineVal, range }));
+        return;
       }
       
-      // Fallback: If no Twelve Data key or it failed, try a proxy for Yahoo Finance or use Mock
-      setMarketGraphData(MOCK_GRAPH_DATA);
-      setPreviousClose(22912.4);
-      setMarketRange({
-        start: MOCK_GRAPH_DATA[0].value,
-        end: MOCK_GRAPH_DATA[MOCK_GRAPH_DATA.length - 1].value,
-        high: Math.max(...MOCK_GRAPH_DATA.map(v => v.value)),
-        low: Math.min(...MOCK_GRAPH_DATA.map(v => v.value))
-      });
+      setMarketGraphData([]);
+      setPreviousClose(null);
     } catch (error) {
       console.error("Error fetching graph data:", error);
-      setMarketGraphData(MOCK_GRAPH_DATA);
-      setPreviousClose(22912.4);
+      setMarketGraphData([]);
+      setPreviousClose(null);
     }
   };
 
@@ -603,7 +701,7 @@ const Index = ({ defaultSection }: IndexProps) => {
     }
 
     setIsNewsLoading(true);
-    let articles = MOCK_NEWS;
+    let articles: NewsItem[] = [];
     let aiNotes: Record<number, string> = {};
 
     if (apiKeys.news) {
@@ -1163,26 +1261,81 @@ const Index = ({ defaultSection }: IndexProps) => {
               </div>
 
               {/* Analysis Graph */}
-              <div className="chart-card card-common">
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-                  <h3 style={{margin: 0}}>Market Sentiment (Live)</h3>
-                  <div style={{fontSize: '12px', color: 'var(--et-text-secondary)'}}>Symbol: NIFTY 50 (8D View)</div>
+              <div className="chart-card card-common" style={{ height: 'auto', minHeight: '450px' }}>
+                <div style={{display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px'}}>
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                    <div>
+                      <h3 style={{margin: 0, fontSize: '18px'}}>Market Performance</h3>
+                      <div style={{fontSize: '12px', color: 'var(--et-text-secondary)', marginTop: '4px'}}>
+                        {SYMBOL_MAP[activeGraphSymbol]?.name} · {activeGraphRange.label} View
+                      </div>
+                    </div>
+                    <div className="range-selector" style={{display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px'}}>
+                      {RANGE_OPTIONS.map(opt => (
+                        <button 
+                          key={opt.label}
+                          onClick={() => setActiveGraphRange(opt)}
+                          style={{
+                            background: activeGraphRange.label === opt.label ? 'var(--et-accent)' : 'transparent',
+                            color: activeGraphRange.label === opt.label ? 'white' : 'var(--et-text-secondary)',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '4px 10px',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="symbol-selector" style={{display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none'}}>
+                    {Object.keys(SYMBOL_MAP).map(sym => (
+                      <button 
+                        key={sym}
+                        onClick={() => setActiveGraphSymbol(sym)}
+                        style={{
+                          background: activeGraphSymbol === sym ? 'rgba(249,115,22,0.15)' : 'rgba(255,255,255,0.03)',
+                          color: activeGraphSymbol === sym ? 'var(--et-accent)' : 'var(--et-text-secondary)',
+                          border: activeGraphSymbol === sym ? '1px solid var(--et-accent)' : '1px solid rgba(255,255,255,0.05)',
+                          borderRadius: '20px',
+                          padding: '4px 12px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {sym}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {marketRange && (
-                  <div style={{display: 'flex', gap: '16px', marginBottom: '16px', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '8px', fontSize: '11px'}}>
-                    <div style={{flex: 1}}>
-                      <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>PREV CLOSE</div>
-                      <div style={{fontWeight: 'bold', color: 'rgba(255,255,255,0.6)'}}>₹{previousClose?.toLocaleString('en-IN') || 'N/A'}</div>
+                  <div style={{display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '20px', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                    <div style={{flex: '1 1 120px'}}>
+                      <div style={{color: 'var(--et-text-secondary)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>Baseline</div>
+                      <div style={{fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', fontSize: '14px'}}>
+                        {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{previousClose?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </div>
                     </div>
-                    <div style={{flex: 1}}>
-                      <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>CURRENT</div>
-                      <div style={{fontWeight: 'bold', color: 'white'}}>₹{marketRange.end.toLocaleString('en-IN')}</div>
+                    <div style={{flex: '1 1 120px'}}>
+                      <div style={{color: 'var(--et-text-secondary)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>Current Price</div>
+                      <div style={{fontWeight: 'bold', color: 'white', fontSize: '14px'}}>
+                        {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{marketRange.end.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </div>
                     </div>
-                    <div style={{flex: 1}}>
-                      <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>CHANGE</div>
+                    <div style={{flex: '1 1 120px'}}>
+                      <div style={{color: 'var(--et-text-secondary)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>Change</div>
                       <div style={{
                         fontWeight: 'bold', 
+                        fontSize: '14px',
                         color: (marketRange.end >= (previousClose || 0)) ? 'var(--et-success)' : 'var(--et-danger)'
                       }}>
                         {((marketRange.end - (previousClose || 0)) >= 0 ? '+' : '')}
@@ -1190,81 +1343,138 @@ const Index = ({ defaultSection }: IndexProps) => {
                         {` (${((marketRange.end - (previousClose || 0)) / (previousClose || 1) * 100).toFixed(2)}%)`}
                       </div>
                     </div>
-                    <div style={{flex: 1}}>
-                      <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>DAY HIGH</div>
-                      <div style={{fontWeight: 'bold', color: 'var(--et-success)'}}>₹{marketRange.high.toLocaleString('en-IN')}</div>
+                    <div style={{flex: '1 1 120px'}}>
+                      <div style={{color: 'var(--et-text-secondary)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>Range High</div>
+                      <div style={{fontWeight: 'bold', color: 'var(--et-success)', fontSize: '14px'}}>
+                        {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{marketRange.high.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </div>
                     </div>
-                    <div style={{flex: 1}}>
-                      <div style={{color: 'var(--et-text-secondary)', marginBottom: '2px'}}>DAY LOW</div>
-                      <div style={{fontWeight: 'bold', color: 'var(--et-danger)'}}>₹{marketRange.low.toLocaleString('en-IN')}</div>
+                    <div style={{flex: '1 1 120px'}}>
+                      <div style={{color: 'var(--et-text-secondary)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>Range Low</div>
+                      <div style={{fontWeight: 'bold', color: 'var(--et-danger)', fontSize: '14px'}}>
+                        {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{marketRange.low.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </div>
                     </div>
                   </div>
                 )}
 
-                <div style={{ width: '100%', height: marketRange ? 'calc(100% - 100px)' : 'calc(100% - 40px)' }}>
-                  <ResponsiveContainer>
-                    <AreaChart data={marketGraphData}>
+                <div style={{ width: '100%', height: '300px' }}>
+                  <ChartContainer
+                    config={{
+                      value: {
+                        label: "Price",
+                        color: marketRange && marketRange.end >= (previousClose || 0) ? "var(--et-success)" : "var(--et-danger)",
+                      },
+                    }}
+                    className="h-full w-full"
+                  >
+                    <AreaChart
+                      data={marketGraphData}
+                      margin={{
+                        left: 0,
+                        right: 0,
+                        top: 10,
+                        bottom: 0
+                      }}
+                    >
                       <defs>
-                        <linearGradient id="colorDynamic" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={marketRange && marketRange.end >= (previousClose || 0) ? "var(--et-success)" : "var(--et-danger)"} stopOpacity={0.4}/>
-                          <stop offset="95%" stopColor={marketRange && marketRange.end >= (previousClose || 0) ? "var(--et-success)" : "var(--et-danger)"} stopOpacity={0}/>
+                        <linearGradient id="fillPrice" x1="0" y1="0" x2="0" y2="1">
+                          <stop
+                            offset="5%"
+                            stopColor="var(--color-value)"
+                            stopOpacity={0.3}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="var(--color-value)"
+                            stopOpacity={0}
+                          />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
-                      <XAxis 
-                        dataKey="name" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{fill: 'var(--et-text-secondary)', fontSize: 9}} 
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis
+                        dataKey="name"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={12}
                         minTickGap={60}
+                        tick={{ fill: 'var(--et-text-secondary)', fontSize: 10 }}
                       />
-                      <YAxis 
-                        axisLine={false} 
-                        tickLine={false} 
+                      <YAxis
+                        hide
                         domain={['auto', 'auto']}
-                        tick={{fill: 'var(--et-text-secondary)', fontSize: 10}}
                       />
-                      <Tooltip 
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            const d = payload[0].payload;
-                            const val = d.value;
-                            const diff = d.gain ?? 0;
-                            const pct = d.percentage ?? 0;
-                            
-                            return (
-                              <div style={{ backgroundColor: '#0D1B2A', padding: '10px', borderRadius: '8px', border: `1px solid ${diff >= 0 ? 'var(--et-success)' : 'var(--et-danger)'}`, fontSize: '12px' }}>
-                                <div style={{ color: 'var(--et-text-secondary)', marginBottom: '4px' }}>{d.name}</div>
-                                <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '2px' }}>₹{val.toLocaleString('en-IN')}</div>
-                                <div style={{ color: diff >= 0 ? 'var(--et-success)' : 'var(--et-danger)', fontWeight: 'bold' }}>
-                                  {diff >= 0 ? '▲' : '▼'} {Math.abs(diff).toFixed(2)} ({pct.toFixed(2)}%)
+                      <ChartTooltip
+                        cursor={{ stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1 }}
+                        content={
+                          <ChartTooltipContent
+                            indicator="line"
+                            labelFormatter={(value) => {
+                              return <span className="font-bold">{value}</span>;
+                            }}
+                            formatter={(value, name, item) => (
+                              <div className="flex flex-col gap-2 min-w-[140px]">
+                                <div className="flex items-center justify-between gap-4">
+                                  <span className="text-muted-foreground">PRICE</span>
+                                  <span className="font-mono font-bold">
+                                    {SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}
+                                    {Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                  </span>
                                 </div>
-                                {d.baseline && <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>Ref: ₹{d.baseline.toLocaleString('en-IN')}</div>}
+                                
+                                {item.payload.open !== undefined && (
+                                  <div className="grid grid-cols-1 gap-y-1 text-[10px] border-t border-white/10 pt-2">
+                                    <div className="flex justify-between gap-2">
+                                      <span className="text-muted-foreground uppercase">Open</span>
+                                      <span className="font-mono">{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{item.payload.open.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-2">
+                                      <span className="text-muted-foreground uppercase">High</span>
+                                      <span className="font-mono text-et-success">{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{item.payload.high.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-2">
+                                      <span className="text-muted-foreground uppercase">Low</span>
+                                      <span className="font-mono text-et-danger">{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{item.payload.low.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-2">
+                                      <span className="text-muted-foreground uppercase">Change</span>
+                                      <span style={{ color: item.payload.gain >= 0 ? 'var(--et-success)' : 'var(--et-danger)' }} className="font-bold">
+                                        {item.payload.percentage.toFixed(2)}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            );
-                          }
-                          return null;
-                        }}
+                            )}
+                          />
+                        }
                       />
                       {previousClose && (
                         <ReferenceLine 
                           y={previousClose} 
-                          stroke="rgba(255,255,255,0.3)" 
-                          strokeDasharray="5 5"
-                          label={{ position: 'left', value: 'Prev Close', fill: 'rgba(255,255,255,0.4)', fontSize: 10 }} 
+                          stroke="rgba(255,255,255,0.2)" 
+                          strokeDasharray="4 4"
+                          label={{ 
+                            position: 'right', 
+                            value: 'Baseline', 
+                            fill: 'rgba(255,255,255,0.3)', 
+                            fontSize: 9,
+                            dy: -10
+                          }} 
                         />
                       )}
-                      <Area 
-                        type="monotone" 
-                        dataKey="value" 
-                        stroke={marketRange && marketRange.end >= (previousClose || 0) ? "var(--et-success)" : "var(--et-danger)"}
-                        strokeWidth={2} 
-                        fillOpacity={1} 
-                        fill="url(#colorDynamic)" 
-                        animationDuration={1500}
+                      <Area
+                        dataKey="value"
+                        type="linear"
+
+                        fill="url(#fillPrice)"
+                        fillOpacity={0.4}
+                        stroke="var(--color-value)"
+                        strokeWidth={2}
+                        animationDuration={1000}
                       />
                     </AreaChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </div>
               </div>
 
@@ -1290,25 +1500,45 @@ const Index = ({ defaultSection }: IndexProps) => {
                         </div>
                       ))
                     : marketData.map((d, i) => (
-                        <div key={i} className="market-card" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative'}}>
-                          {d.mock && <span style={{ position: 'absolute', top: '4px', right: '4px', fontSize: '8px', background: 'rgba(255,255,255,0.1)', color: 'var(--et-text-secondary)', padding: '2px 4px', borderRadius: '4px' }}>Sample</span>}
-                          <div className="label" style={{fontWeight: 'bold', fontSize: '14px'}}>{d.name}</div>
-                          {d.type && (
-                            <div style={{
-                              fontSize: '10px', 
-                              background: 'rgba(255,255,255,0.1)', 
-                              padding: '2px 8px', 
-                              borderRadius: '10px', 
-                              color: 'var(--et-text-secondary)',
-                              marginBottom: '4px',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.5px'
-                            }}>
-                              {d.type}
-                            </div>
-                          )}
-                          <div className="price" style={{fontSize: '18px', fontWeight: 'bold'}}>{d.price}</div>
-                          <div className="change" style={{color: d.up ? 'var(--et-success)' : 'var(--et-danger)', fontWeight: '600', fontSize: '13px'}}>{d.change}</div>
+                        <div 
+                          key={i} 
+                          className="market-card" 
+                          onClick={() => {
+                            const found = Object.keys(SYMBOL_MAP).find(k => SYMBOL_MAP[k].yahoo === d.symbol || k === d.name);
+                            if (found) setActiveGraphSymbol(found);
+                          }}
+                          style={{display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative', cursor: 'pointer', transition: 'all 0.2s', padding: '16px 12px'}}
+                        >
+                          <div style={{display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'flex-start'}}>
+                            <div className="label" style={{fontWeight: 'bold', fontSize: '13px'}}>{d.name}</div>
+                            <div className="change" style={{color: d.up ? 'var(--et-success)' : 'var(--et-danger)', fontWeight: 'bold', fontSize: '11px'}}>{d.percentChange}</div>
+                          </div>
+                          
+                          <div className="price" style={{fontSize: '16px', fontWeight: 'bold', marginBottom: '8px'}}>{d.price}</div>
+                          
+                          {/* Sparkline View */}
+                          <div style={{width: '100%', height: '40px', marginTop: 'auto'}}>
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={marketSparklines[d.name] || []}>
+                                <defs>
+                                  <linearGradient id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={d.up ? 'var(--et-success)' : 'var(--et-danger)'} stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor={d.up ? 'var(--et-success)' : 'var(--et-danger)'} stopOpacity={0}/>
+                                  </linearGradient>
+                                </defs>
+                                <Area 
+                                  type="monotone" 
+                                  dataKey="value" 
+                                  stroke={d.up ? 'var(--et-success)' : 'var(--et-danger)'} 
+                                  fill={`url(#grad-${i})`} 
+                                  strokeWidth={1.5} 
+                                  isAnimationActive={false}
+                                  dot={false}
+                                />
+                                <YAxis hide domain={['auto', 'auto']} />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </div>
                         </div>
                       ))
                   }
@@ -1471,18 +1701,192 @@ const Index = ({ defaultSection }: IndexProps) => {
         <div className="section active">
           <nav className="top-nav">
              <div className="nav-logo"><span>ET</span> Concierge</div>
-             <button onClick={() => setCurrentSection('dashboard')}>← Back to Dashboard</button>
+             <div className="nav-links">
+               <button className="nav-link" onClick={() => setCurrentSection('dashboard')}>Dashboard</button>
+               <button className="nav-link active">Markets</button>
+               <button className="nav-link" onClick={() => setCurrentSection('services')}>Services</button>
+             </div>
+             <div className="nav-right">
+               <button onClick={() => setIsSettingsOpen(true)}>⚙ Settings</button>
+             </div>
           </nav>
           <div className="container" style={{padding: '40px 0'}}>
-             <h2>Market Analysis</h2>
-             <div className="market-grid" style={{marginTop: '24px'}}>
-               {marketData.map((d, i) => (
-                 <div key={i} className="market-card">
-                   <h4>{d.name}</h4>
-                   <div style={{fontSize: '24px', fontWeight: 'bold'}}>{d.price}</div>
-                   <div style={{color: d.up ? 'var(--et-success)' : 'var(--et-danger)'}}>{d.change}</div>
-                 </div>
-               ))}
+             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px'}}>
+                <div>
+                  <h2 style={{margin: 0}}>Market Intelligence</h2>
+                  <p style={{color: 'var(--et-text-secondary)', margin: '8px 0 0 0'}}>Real-time analysis across Stocks, Forex and Crypto</p>
+                </div>
+                <button 
+                  onClick={() => { fetchMarketData(); fetchMarketGraph(); showToast("Market data refreshed"); }}
+                  style={{background: 'var(--et-accent)', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer'}}
+                >
+                  Refresh All
+                </button>
+             </div>
+
+             {/* Graph Section in Markets */}
+             <div className="dash-grid" style={{marginBottom: '40px'}}>
+                <div style={{gridColumn: '1 / -1'}}>
+                   <div className="chart-card card-common" style={{ height: 'auto', minHeight: '450px' }}>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px'}}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                          <div>
+                            <h3 style={{margin: 0, fontSize: '18px'}}>Technical Analysis</h3>
+                            <div style={{fontSize: '12px', color: 'var(--et-text-secondary)', marginTop: '4px'}}>
+                              {SYMBOL_MAP[activeGraphSymbol]?.name} · {activeGraphRange.label} Chart
+                            </div>
+                          </div>
+                          <div className="range-selector" style={{display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px'}}>
+                            {RANGE_OPTIONS.map(opt => (
+                              <button 
+                                key={opt.label}
+                                onClick={() => setActiveGraphRange(opt)}
+                                style={{
+                                  background: activeGraphRange.label === opt.label ? 'var(--et-accent)' : 'transparent',
+                                  color: activeGraphRange.label === opt.label ? 'white' : 'var(--et-text-secondary)',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  padding: '4px 10px',
+                                  fontSize: '11px',
+                                  fontWeight: 'bold',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {marketRange && (
+                        <div style={{display: 'flex', flexWrap: 'wrap', gap: '20px', marginBottom: '24px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                          <div>
+                            <div style={{color: 'var(--et-text-secondary)', fontSize: '10px', textTransform: 'uppercase', marginBottom: '4px'}}>Current</div>
+                            <div style={{fontWeight: 'bold', fontSize: '20px'}}>{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{marketRange.end.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                          </div>
+                          <div>
+                            <div style={{color: 'var(--et-text-secondary)', fontSize: '10px', textTransform: 'uppercase', marginBottom: '4px'}}>Change</div>
+                            <div style={{fontWeight: 'bold', fontSize: '20px', color: (marketRange.end >= (previousClose || 0)) ? 'var(--et-success)' : 'var(--et-danger)'}}>
+                              {((marketRange.end - (previousClose || 0)) >= 0 ? '+' : '')}{((marketRange.end - (previousClose || 0)) / (previousClose || 1) * 100).toFixed(2)}%
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div style={{ width: '100%', height: '300px' }}>
+                        <ChartContainer
+                          config={{ value: { label: "Price", color: marketRange && marketRange.end >= (previousClose || 0) ? "var(--et-success)" : "var(--et-danger)" } }}
+                          className="h-full w-full"
+                        >
+                          <AreaChart data={marketGraphData}>
+                            <defs>
+                              <linearGradient id="fillPriceMarkets" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                            <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={12} minTickGap={60} tick={{ fill: 'var(--et-text-secondary)', fontSize: 10 }} />
+                            <YAxis hide domain={['auto', 'auto']} />
+                            <ChartTooltip 
+                              content={
+                                <ChartTooltipContent 
+                                  formatter={(value) => (
+                                    <div className="flex justify-between gap-4 min-w-[120px]">
+                                      <span className="text-muted-foreground">PRICE</span>
+                                      <span className="font-mono font-bold">{SYMBOL_MAP[activeGraphSymbol]?.currency === 'INR' ? '₹' : '$'}{Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                  )}
+                                />
+                              }
+                            />
+                            <Area
+                              dataKey="value"
+                              type="linear"
+ fill="url(#fillPriceMarkets)" stroke="var(--color-value)" strokeWidth={2} />
+                          </AreaChart>
+                        </ChartContainer>
+                      </div>
+                   </div>
+                </div>
+             </div>
+
+             {/* Detailed Market Table */}
+             <div className="card-common" style={{padding: 0, overflow: 'hidden'}}>
+                <div style={{padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between'}}>
+                  <h3 style={{margin: 0}}>Market Overview</h3>
+                </div>
+                <div style={{overflowX: 'auto'}}>
+                  <table style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left'}}>
+                    <thead>
+                      <tr style={{background: 'rgba(255,255,255,0.02)', color: 'var(--et-text-secondary)', fontSize: '12px', textTransform: 'uppercase'}}>
+                        <th style={{padding: '16px 20px'}}>Asset</th>
+                        <th style={{padding: '16px 20px'}}>Price</th>
+                        <th style={{padding: '16px 20px'}}>Change</th>
+                        <th style={{padding: '16px 20px'}}>Day Range</th>
+                        <th style={{padding: '16px 20px'}}>52W Range</th>
+                        <th style={{padding: '16px 20px'}}>Volume</th>
+                        <th style={{padding: '16px 20px'}}>Market Cap</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {marketData.map((d, i) => (
+                        <tr 
+                          key={i} 
+                          onClick={() => {
+                            const found = Object.keys(SYMBOL_MAP).find(k => SYMBOL_MAP[k].twelve === d.symbol || SYMBOL_MAP[k].twelve.startsWith(d.name));
+                            if (found) setActiveGraphSymbol(found);
+                            showToast(`Loading chart for ${d.name}`);
+                          }}
+                          style={{
+                            borderBottom: '1px solid rgba(255,255,255,0.05)', 
+                            cursor: 'pointer',
+                            transition: 'background 0.2s'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <td style={{padding: '16px 20px'}}>
+                            <div style={{fontWeight: 'bold'}}>{d.name}</div>
+                            <div style={{fontSize: '11px', color: 'var(--et-text-secondary)'}}>{d.type}</div>
+                          </td>
+                          <td style={{padding: '16px 20px', fontWeight: 'bold', fontSize: '15px'}}>{d.price}</td>
+                          <td style={{padding: '16px 20px'}}>
+                            <div style={{color: d.up ? 'var(--et-success)' : 'var(--et-danger)', fontWeight: 'bold'}}>
+                              {d.percentChange}
+                            </div>
+                            <div style={{fontSize: '11px', color: d.up ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)'}}>
+                              {d.change}
+                            </div>
+                          </td>
+                          <td style={{padding: '16px 20px', fontSize: '12px'}}>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                              <div style={{display: 'flex', justifyContent: 'space-between', gap: '10px'}}>
+                                <span style={{color: 'var(--et-text-secondary)'}}>L:</span> {d.low}
+                              </div>
+                              <div style={{display: 'flex', justifyContent: 'space-between', gap: '10px'}}>
+                                <span style={{color: 'var(--et-text-secondary)'}}>H:</span> {d.high}
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{padding: '16px 20px', fontSize: '12px'}}>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                              <div style={{display: 'flex', justifyContent: 'space-between', gap: '10px'}}>
+                                <span style={{color: 'var(--et-text-secondary)'}}>L:</span> {d.low52}
+                              </div>
+                              <div style={{display: 'flex', justifyContent: 'space-between', gap: '10px'}}>
+                                <span style={{color: 'var(--et-text-secondary)'}}>H:</span> {d.high52}
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{padding: '16px 20px', fontSize: '13px', color: 'rgba(255,255,255,0.8)'}}>{d.volume}</td>
+                          <td style={{padding: '16px 20px', fontSize: '13px', color: 'rgba(255,255,255,0.8)'}}>{d.marketCap}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
              </div>
 
              <div style={{marginTop: '48px'}}>
@@ -1541,4 +1945,4 @@ const Index = ({ defaultSection }: IndexProps) => {
   );
 };
 
-export default Index;
+export default DashboardIndex;

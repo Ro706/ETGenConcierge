@@ -10,8 +10,18 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+    proxy: {
+      '/api-yahoo': {
+        target: 'https://query1.finance.yahoo.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api-yahoo/, '')
+      }
+    }
   },
   plugins: [react()],
+  define: {
+    __BUNDLED_DEV__: true,
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

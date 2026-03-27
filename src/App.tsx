@@ -1,10 +1,11 @@
+// Fixing default export issue
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import Index from "./pages/Index";
+import DashboardIndex from "./pages/Index";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -35,8 +36,8 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/dashboard" element={<ProtectedRoute><Index defaultSection="dashboard" /></ProtectedRoute>} />
-            <Route path="/onboarding" element={<ProtectedRoute><Index defaultSection="onboarding" /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardIndex defaultSection="dashboard" /></ProtectedRoute>} />
+            <Route path="/onboarding" element={<ProtectedRoute><DashboardIndex defaultSection="onboarding" /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

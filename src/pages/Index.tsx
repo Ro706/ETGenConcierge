@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/chart";
 import "./Concierge.css";
 import { useAuth } from "@/contexts/AuthContext";
-import { Pencil, Check, X, Menu } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Pencil, Check, X, Menu, Shield } from "lucide-react";
 
 // --- Types ---
 interface UserProfile {
@@ -71,9 +72,11 @@ interface ServiceItem {
   title: string;
   best: string;
   matchGoals: string[];
+  isFeatured?: boolean;
 }
 
 interface EventItem {
+  id: string;
   title: string;
   desc: string;
   date: string;
@@ -202,8 +205,6 @@ const FinancialHealthRings = ({ scores }: { scores: Record<string, number> }) =>
 };
 
 // --- Constants ---
-const SERVICES: ServiceItem[] = [];
-const EVENTS: EventItem[] = [];
 const ONBOARD_QUESTIONS = [
   { q: "Hi! I'm your ET Concierge 👋 What's your name?", options: null },
   { q: "Nice to meet you, {name}! What best describes you?", options: ["Student", "Salaried Professional", "Business Owner", "Investor", "Retiree"] },
@@ -246,6 +247,9 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
   const [currentSection, setCurrentSection] = useState(defaultSection || 'landing');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [services, setServices] = useState<ServiceItem[]>([]);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [registeredEventIds, setRegisteredEventIds] = useState<string[]>([]);
   const [apiKeys, setApiKeys] = useState({
     gemini: import.meta.env.VITE_GEMINI_KEY || '',
     news: import.meta.env.VITE_NEWS_KEY || '',
@@ -489,9 +493,43 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
     localStorage.setItem('et_yahoo_lockout', JSON.stringify({ expiry: Date.now() + (min * 60 * 1000) }));
   };
 
+  const fetchData = async () => {
+    const { data: sData } = await supabase.from("services").select("*").order("created_at", { ascending: false });
+    const { data: eData } = await supabase.from("events").select("*").order("created_at", { ascending: false });
+    
+    // Fetch user registrations
+    if (user) {
+      const { data: rData } = await supabase
+        .from("event_registrations")
+        .select("event_id")
+        .eq("user_id", user.id);
+      if (rData) setRegisteredEventIds(rData.map(r => r.event_id));
+    }
+
+    if (sData) {
+      setServices(sData.map((s: any) => ({
+        id: s.id,
+        title: s.title,
+        best: s.description,
+        matchGoals: s.match_goals,
+        isFeatured: s.is_featured
+      })));
+    }
+    if (eData) {
+      setEvents(eData.map((e: any) => ({
+        id: e.id,
+        title: e.title,
+        desc: e.description,
+        date: e.event_date,
+        matchSectors: e.match_sectors
+      })));
+    }
+  };
+
   useEffect(() => {
-    if (currentSection === 'dashboard' && userProfile) {
+    if (userProfile) {
       const load = async () => {
+        await fetchData();
         await fetchMarketData();
         await new Promise(r => setTimeout(r, 500));
         await fetchMarketGraph();
@@ -916,6 +954,13 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
     }, 3000);
   };
 
+  // Prevent ReferenceError for 'toast' in case of any remaining calls or stale code
+  (window as any).toast = {
+    error: (msg: string) => showToast(msg),
+    success: (msg: string) => showToast(msg),
+    info: (msg: string) => showToast(msg)
+  };
+
   const callGemini = async (prompt: string, systemPrompt?: string, history?: ChatMessage[]) => {
     const key = apiKeys.gemini.trim().replace(/^["']|["']$/g, '');
     if (!key) return null;
@@ -1151,13 +1196,46 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
   const [serviceChatHistory, setServiceChatHistory] = useState<ChatMessage[]>([]);
   const [isServiceAiTyping, setIsServiceAiTyping] = useState(false);
 
-  const openServiceAdvisor = (service: ServiceItem) => {
+  const openServiceAdvisor = async (service: ServiceItem) => {
+    // Increment view count in Supabase
+    await supabase.rpc('increment_service_views', { service_id: service.id });
+    
     setSelectedService(service);
     setIsServiceChatOpen(true);
     setServiceChatHistory([{ 
       role: 'assistant', 
       content: `Hello! I'm your expert advisor for **${service.title}**. Based on your profile as a ${userProfile?.persona}, I can help you understand how this service fits your goals. What would you like to know?` 
     }]);
+  };
+
+  const registerForEvent = async (eventId: string) => {
+    if (!eventId) {
+      showToast("Error: Missing Event ID");
+      return;
+    }
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    try {
+      const { error } = await supabase.from('event_registrations').insert([
+        { event_id: eventId, user_id: user.id }
+      ]);
+      if (error) {
+        if (error.code === '23505') {
+          showToast("You are already registered for this event.");
+        } else {
+          console.error("Registration Error:", error);
+          showToast(error.message || "Failed to register");
+        }
+      } else {
+        showToast("Successfully registered for the event!");
+        fetchData();
+      }
+    } catch (err: any) {
+      console.error("Catch Error:", err);
+      showToast(err.message || "An unexpected error occurred");
+    }
   };
 
   const sendServiceAiMessage = async (text: string) => {
@@ -1173,6 +1251,16 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
     const resp = await callGemini(text, system, serviceChatHistory);
     setIsServiceAiTyping(false);
     setServiceChatHistory(prev => [...prev, { role: 'assistant', content: resp || "I'm having trouble connecting. Please try again." }]);
+  };
+
+  const formatEventDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr; // Return raw string if parsing fails
+      return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch (e) {
+      return dateStr;
+    }
   };
 
   return (
@@ -1380,6 +1468,48 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                 </div>
                 <p className="mb-6 text-sm leading-relaxed text-slate-400">{userProfile?.summary}</p>
                 
+                <div className="mt-6 border-t border-white/5 pt-6">
+                  {registeredEventIds.length > 0 ? (
+                    <>
+                      <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1">
+                        <Check size={10} /> Registered Events
+                      </div>
+                      <ul className="space-y-3">
+                        {events.filter(e => registeredEventIds.includes(e.id)).map((e, i) => (
+                          <li key={i} className="flex flex-col gap-1 text-[13px] text-white">
+                            <div className="font-bold">{e.title}</div>
+                            <div className="text-[10px] text-slate-500">{formatEventDate(e.date)}</div>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <>
+                      <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-orange-500">Recommended Events</div>
+                      <ul className="space-y-3">
+                        {events
+                          .filter(e => e.matchSectors.some(s => userProfile?.sectors?.includes(s)))
+                          .slice(0, 3)
+                          .map((e, i) => (
+                            <li key={i} className="flex flex-col gap-1 text-[13px] text-white">
+                              <div className="font-bold">{e.title}</div>
+                              <div className="text-[10px] text-slate-500">{formatEventDate(e.date)}</div>
+                              <button 
+                                onClick={() => registerForEvent(e.id)}
+                                className="text-[10px] text-orange-500 hover:underline font-bold text-left"
+                              >
+                                Register Now →
+                              </button>
+                            </li>
+                          ))}
+                        {events.filter(e => e.matchSectors.some(s => userProfile?.sectors?.includes(s))).length === 0 && (
+                          <li className="text-[12px] text-slate-500 italic">No matching events found.</li>
+                        )}
+                      </ul>
+                    </>
+                  )}
+                </div>
+
                 {userProfile?.recommendations && userProfile.recommendations.length > 0 && (
                   <div className="mt-6 border-t border-white/5 pt-6">
                     <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-orange-500">Top Recommendations</div>
@@ -1655,6 +1785,67 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                 </div>
               </div>
 
+              {/* Featured Services (Top 3) */}
+              <div className="lg:col-span-12">
+                <div className="mb-6 flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-white">Top Services for You</h3>
+                  <button onClick={() => setCurrentSection('services')} className="text-sm font-bold text-orange-500 hover:text-orange-400">View All Services →</button>
+                </div>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                  {services.filter(s => s.isFeatured).slice(0, 3).length === 0 ? (
+                    <div className="col-span-full rounded-xl border border-dashed border-white/10 p-8 text-center text-slate-500">
+                      No featured services at the moment.
+                    </div>
+                  ) : (
+                    services.filter(s => s.isFeatured).slice(0, 3).map(s => (
+                      <div key={s.id} className="flex flex-col rounded-2xl border border-white/5 bg-[#112240] p-6 transition-all hover:border-orange-500/30">
+                        <h4 className="mb-2 text-lg font-bold text-white">{s.title}</h4>
+                        <p className="mb-6 text-sm text-slate-400">{s.best}</p>
+                        <button 
+                          onClick={() => openServiceAdvisor(s)}
+                          className="mt-auto w-full rounded-xl bg-orange-500 py-3 text-xs font-bold text-white transition-all hover:bg-orange-600"
+                        >
+                          Talk to Advisor
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Upcoming Events */}
+              <div className="lg:col-span-12">
+                <div className="mb-6 flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-white">Upcoming ET Events</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {events.length === 0 ? (
+                    <div className="col-span-full rounded-xl border border-dashed border-white/10 p-8 text-center text-slate-500">
+                      No upcoming events scheduled.
+                    </div>
+                  ) : (
+                    events.slice(0, 4).map((e, i) => (
+                      <div key={i} className="flex flex-col rounded-xl border border-white/5 bg-[#112240] p-4 transition-all hover:bg-[#1a365d]">
+                        <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-orange-500">{formatEventDate(e.date)}</div>
+                        <h4 className="mb-2 text-sm font-bold text-white">{e.title}</h4>
+                        <p className="mb-4 text-xs text-slate-400 line-clamp-2">{e.desc}</p>
+                        <div className="mb-4 flex flex-wrap gap-1">
+                          {e.matchSectors.map(sector => (
+                            <span key={sector} className="rounded-md bg-white/5 px-2 py-0.5 text-[9px] text-slate-500">{sector}</span>
+                          ))}
+                        </div>
+                        <button 
+                          onClick={() => registerForEvent(e.id)}
+                          className="mt-auto w-full rounded-lg bg-orange-500/10 py-2 text-[10px] font-bold text-orange-500 transition-all hover:bg-orange-500 hover:text-white"
+                        >
+                          Register Now
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
               {/* AI Chat Section */}
               <div className="lg:col-span-12">
                 <div className="mb-6 flex items-center justify-between">
@@ -1909,14 +2100,14 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
              </div>
              
              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-               {SERVICES.length === 0 ? (
+               {services.length === 0 ? (
                  <div className="col-span-full rounded-2xl border border-dashed border-white/10 p-12 text-center">
                    <div className="mb-4 text-4xl">🛠️</div>
                    <h3 className="text-lg font-bold text-white">Services are being personalized</h3>
                    <p className="mx-auto mt-2 max-w-xs text-sm text-slate-500">Our team is hand-picking the best ET products for your goals.</p>
                  </div>
                ) : (
-                 SERVICES.map(s => {
+                 services.map(s => {
                    const isRecommended = s.matchGoals.some(g => userProfile?.goals?.includes(g));
                    return (
                      <div key={s.id} className={`flex flex-col rounded-2xl border p-6 transition-all hover:scale-[1.02] ${

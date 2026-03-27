@@ -9,6 +9,8 @@ import DashboardIndex from "./pages/Index";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
+import Admin from "./pages/Admin";
+import AdminLogin from "./pages/AdminLogin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,7 +24,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       </div>
     );
   }
-  return user ? <>{children}</> : <Navigate to="/" replace />;
+  return user ? <>{children}</> : <Navigate to="/auth" replace />;
 };
 
 const App = () => (
@@ -36,8 +38,14 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/dashboard" element={<ProtectedRoute><DashboardIndex defaultSection="dashboard" /></ProtectedRoute>} />
             <Route path="/onboarding" element={<ProtectedRoute><DashboardIndex defaultSection="onboarding" /></ProtectedRoute>} />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <Admin />
+              </ProtectedRoute>
+            } />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

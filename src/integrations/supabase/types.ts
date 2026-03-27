@@ -26,6 +26,7 @@ export type Database = {
           profile_summary: string | null
           risk_appetite: string | null
           sectors: string[] | null
+          is_admin: boolean | null
           updated_at: string
           user_id: string
         }
@@ -40,6 +41,7 @@ export type Database = {
           profile_summary?: string | null
           risk_appetite?: string | null
           sectors?: string[] | null
+          is_admin?: boolean | null
           updated_at?: string
           user_id: string
         }
@@ -54,17 +56,122 @@ export type Database = {
           profile_summary?: string | null
           risk_appetite?: string | null
           sectors?: string[] | null
+          is_admin?: boolean | null
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      },
+      services: {
+        Row: {
+          id: string
+          title: string
+          description: string
+          match_goals: string[]
+          is_featured: boolean
+          views_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          description: string
+          match_goals?: string[]
+          is_featured?: boolean
+          views_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string
+          match_goals?: string[]
+          is_featured?: boolean
+          views_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      },
+      events: {
+        Row: {
+          id: string
+          title: string
+          description: string
+          event_date: string
+          match_sectors: string[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          description: string
+          event_date: string
+          match_sectors?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string
+          event_date?: string
+          match_sectors?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      },
+      event_registrations: {
+        Row: {
+          id: string
+          event_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          }
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_service_views: {
+        Args: {
+          service_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

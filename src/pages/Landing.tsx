@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Shield } from "lucide-react";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -227,6 +227,14 @@ const Landing = () => {
           <a href="#" style={{ color: '#CCD6F6', textDecoration: 'none' }}>Terms of Service</a>
           <a href="#" style={{ color: '#CCD6F6', textDecoration: 'none' }}>Privacy Policy</a>
           <a href="#" style={{ color: '#CCD6F6', textDecoration: 'none' }}>Contact Us</a>
+          <button 
+            onClick={() => navigate('/admin/login')} 
+            style={{ background: 'none', border: 'none', padding: 0, color: '#495670', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem' }}
+            onMouseOver={e => (e.currentTarget.style.color = '#F97316')}
+            onMouseOut={e => (e.currentTarget.style.color = '#495670')}
+          >
+            <Shield size={12} /> Admin Access
+          </button>
         </div>
         <p style={{ fontSize: '0.75rem', color: '#495670' }}>© 2026 The Economic Times. All rights reserved.</p>
       </footer>

@@ -22,16 +22,34 @@ const Auth = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
     const { error, data } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
+    
     if (error) {
+      setLoading(false);
       toast({ title: 'Login failed', description: error.message, variant: 'destructive' });
-    } else if (data.user) {
-      const p = localStorage.getItem('et_profile');
-      if (p) {
-        navigate('/dashboard');
+      return;
+    }
+
+    if (data.user) {
+      // Check if user is admin via profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('user_id', data.user.id)
+        .single();
+
+      setLoading(false);
+      
+      if (profile?.is_admin) {
+        navigate('/admin');
       } else {
-        navigate('/onboarding');
+        const p = localStorage.getItem('et_profile');
+        if (p) {
+          navigate('/dashboard');
+        } else {
+          navigate('/onboarding');
+        }
       }
     }
   };

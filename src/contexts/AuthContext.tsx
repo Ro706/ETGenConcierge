@@ -23,23 +23,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check for mock session first
+    const mockSession = localStorage.getItem("et_admin_mock_session");
+    if (mockSession) {
+      setSession(JSON.parse(mockSession));
+      setLoading(false);
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setSession(session);
+        if (session) {
+          setSession(session);
+        } else {
+          // Only clear if there's no mock session
+          const stillMock = localStorage.getItem("et_admin_mock_session");
+          if (!stillMock) setSession(null);
+        }
         setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    if (!mockSession) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        setLoading(false);
+      });
+    }
 
     return () => subscription.unsubscribe();
   }, []);
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem("et_admin_mock_session");
     setSession(null);
   };
 

@@ -70,14 +70,9 @@ const Auth = () => {
       return;
     }
 
-    if (data.session) {
-      toast({ title: 'Welcome!', description: 'Please complete your profile.' });
+    if (data.user) {
+      toast({ title: 'Success!', description: 'Your account has been created.' });
       navigate('/onboarding');
-    } else {
-      toast({ 
-        title: 'Account created!', 
-        description: 'Please check your email to verify your account, then log in.' 
-      });
     }
     setLoading(false);
   };

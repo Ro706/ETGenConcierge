@@ -14,35 +14,9 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'login' | 'signup' | 'check-email'>('login');
   
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // Helper to handle routing after successful auth
-  const handleRouting = async (userId: string) => {
-    try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('is_admin, persona_label')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (profile?.is_admin) {
-        navigate('/admin');
-      } else if (profile?.persona_label) {
-        localStorage.setItem('et_profile', JSON.stringify(profile));
-        navigate('/dashboard');
-      } else {
-        navigate('/onboarding');
-      }
-    } catch (err) {
-      console.error("Routing error:", err);
-      navigate('/onboarding');
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,17 +25,24 @@ const Auth = () => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     
     if (error) {
-      toast({ 
-        title: 'Login failed', 
-        description: error.message, 
-        variant: 'destructive' 
-      });
+      toast({ title: 'Login failed', description: error.message, variant: 'destructive' });
       setLoading(false);
       return;
     }
 
     if (data.user) {
-      await handleRouting(data.user.id);
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_admin, persona_label')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
+
+      if (profile?.is_admin) {
+        navigate('/admin');
+      } else {
+        if (profile) localStorage.setItem('et_profile', JSON.stringify(profile));
+        navigate('/dashboard');
+      }
     }
     setLoading(false);
   };
@@ -84,31 +65,26 @@ const Auth = () => {
     });
     
     if (error) {
-      toast({ 
-        title: 'Signup failed', 
-        description: error.message, 
-        variant: 'destructive' 
-      });
+      toast({ title: 'Signup failed', description: error.message, variant: 'destructive' });
       setLoading(false);
       return;
     }
 
     if (data.session) {
-      toast({ title: 'Welcome!', description: 'Your account has been created successfully.' });
-      await handleRouting(data.user!.id);
+      toast({ title: 'Welcome!', description: 'Please complete your profile.' });
+      navigate('/onboarding');
     } else {
-      setView('check-email');
+      toast({ 
+        title: 'Account created!', 
+        description: 'Please check your email to verify your account, then log in.' 
+      });
     }
     setLoading(false);
   };
 
   const handleForgotPassword = async () => {
     if (!email) {
-      toast({ 
-        title: 'Email required', 
-        description: 'Please enter your email to reset your password.', 
-        variant: 'destructive' 
-      });
+      toast({ title: 'Email required', description: 'Enter your email to reset your password.', variant: 'destructive' });
       return;
     }
     setLoading(true);
@@ -116,21 +92,24 @@ const Auth = () => {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setLoading(false);
-    
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      toast({ 
-        title: 'Reset link sent', 
-        description: 'Check your inbox for the password reset link.' 
-      });
+      toast({ title: 'Reset link sent', description: 'Check your inbox for the reset link.' });
     }
   };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        await handleRouting(session.user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        
+        if (profile?.is_admin) navigate('/admin');
+        else navigate('/dashboard');
       } else if (event === 'PASSWORD_RECOVERY') {
         navigate('/reset-password');
       }
@@ -139,41 +118,8 @@ const Auth = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  if (view === 'check-email') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0A192F] px-4">
-        <Card className="w-full max-w-md bg-[#112240] border-white/10 text-white shadow-2xl animate-in fade-in zoom-in duration-300">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-orange-500/10 rounded-full flex items-center justify-center mb-4">
-              <Mail className="text-orange-500" size={32} />
-            </div>
-            <CardTitle className="text-2xl font-bold">Check your email</CardTitle>
-            <CardDescription className="text-slate-400">
-              We've sent a temporary verification link to <span className="text-white font-medium">{email}</span>.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-sm text-slate-400">
-              Click the link in the email to confirm your account. If you don't see it, check your spam folder.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <Button 
-              variant="outline" 
-              className="w-full border-white/10 hover:bg-white/5"
-              onClick={() => setView('login')}
-            >
-              Back to Login
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#0A192F]">
-      {/* Left side - Branding/Info */}
       <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-orange-600 to-orange-800 p-12 flex-col justify-between text-white">
         <div>
           <div className="flex items-center gap-2 mb-8">
@@ -212,7 +158,6 @@ const Auth = () => {
         </div>
       </div>
 
-      {/* Right side - Auth Form */}
       <div className="flex-1 flex items-center justify-center p-6 md:p-12 lg:p-16">
         <Card className="w-full max-w-md bg-[#112240] border-white/10 text-white shadow-2xl">
           <CardHeader className="space-y-1">
@@ -226,7 +171,7 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           
-          <Tabs defaultValue="login" className="w-full" onValueChange={(v) => setView(v as any)}>
+          <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-[#0A192F] p-1 mb-6">
               <TabsTrigger value="login" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">
                 Login
@@ -277,10 +222,7 @@ const Auth = () => {
                     />
                   </div>
                 </div>
-                <Button 
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold h-12 mt-2" 
-                  disabled={loading}
-                >
+                <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold h-12 mt-2" disabled={loading}>
                   {loading ? <Loader2 className="animate-spin mr-2" /> : "Sign In"}
                 </Button>
               </form>
@@ -334,19 +276,16 @@ const Auth = () => {
                     />
                   </div>
                 </div>
-                <Button 
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold h-12 mt-2" 
-                  disabled={loading}
-                >
+                <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold h-12 mt-2" disabled={loading}>
                   {loading ? <Loader2 className="animate-spin mr-2" /> : "Create Account"}
                 </Button>
               </form>
             </TabsContent>
           </Tabs>
           
-          <CardFooter className="px-0 pt-6">
+          <CardFooter className="px-0 pt-6 border-t border-white/5 mt-4">
             <p className="text-xs text-center w-full text-slate-500 leading-relaxed">
-              By clicking continue, you agree to our <span className="text-slate-400 hover:text-white cursor-pointer underline">Terms of Service</span> and <span className="text-slate-400 hover:text-white cursor-pointer underline">Privacy Policy</span>.
+              By continuing, you agree to our Terms of Service and Privacy Policy.
             </p>
           </CardFooter>
         </Card>

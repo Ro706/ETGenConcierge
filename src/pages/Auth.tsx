@@ -5,53 +5,65 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { Shield, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showOtpInput, setShowOtpInput] = useState(false);
-  const [otpType, setOtpType] = useState<'signup' | 'recovery'>('signup');
+  const [view, setView] = useState<'login' | 'signup' | 'check-email'>('login');
+  
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Helper to handle routing after successful auth
+  const handleRouting = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('is_admin, persona_label')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (profile?.is_admin) {
+        navigate('/admin');
+      } else if (profile?.persona_label) {
+        localStorage.setItem('et_profile', JSON.stringify(profile));
+        navigate('/dashboard');
+      } else {
+        navigate('/onboarding');
+      }
+    } catch (err) {
+      console.error("Routing error:", err);
+      navigate('/onboarding');
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     
     if (error) {
+      toast({ 
+        title: 'Login failed', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
       setLoading(false);
-      toast({ title: 'Login failed', description: error.message, variant: 'destructive' });
       return;
     }
 
     if (data.user) {
-      // Check if user has a profile and if they are an admin
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_admin, persona_label')
-        .eq('user_id', data.user.id)
-        .maybeSingle();
-
-      setLoading(false);
-      
-      if (profile?.is_admin) {
-        navigate('/admin');
-      } else if (profile?.persona_label) {
-        // If they have a persona_label, they have completed onboarding
-        localStorage.setItem('et_profile', JSON.stringify(profile));
-        navigate('/dashboard');
-      } else {
-        // No profile or persona_label means they need to onboard
-        navigate('/onboarding');
-      }
+      await handleRouting(data.user.id);
     }
+    setLoading(false);
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -71,53 +83,32 @@ const Auth = () => {
       },
     });
     
-    setLoading(false);
-    
     if (error) {
-      toast({ title: 'Signup failed', description: error.message, variant: 'destructive' });
+      toast({ 
+        title: 'Signup failed', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
+      setLoading(false);
       return;
     }
 
-    // If session exists immediately (email confirmation disabled in Supabase)
     if (data.session) {
-      toast({ title: 'Account created!', description: 'Welcome to ET Concierge.' });
-      navigate('/onboarding');
+      toast({ title: 'Welcome!', description: 'Your account has been created successfully.' });
+      await handleRouting(data.user!.id);
     } else {
-      setOtpType('signup');
-      setShowOtpInput(true);
-      toast({ title: 'Check your email!', description: 'We have sent you a confirmation link to verify your account.' });
+      setView('check-email');
     }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otp || otp.length < 6) {
-      toast({ title: 'Invalid OTP', description: 'Please enter a valid 6-digit code.', variant: 'destructive' });
-      return;
-    }
-    setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: otp,
-      type: otpType,
-    });
     setLoading(false);
-    if (error) {
-      toast({ title: 'Verification failed', description: error.message, variant: 'destructive' });
-    } else {
-      if (otpType === 'recovery') {
-        toast({ title: 'OTP Verified', description: 'Now you can reset your password.' });
-        navigate('/reset-password');
-      } else {
-        toast({ title: 'Account verified!', description: 'Welcome to ET Concierge.' });
-        navigate('/onboarding');
-      }
-    }
   };
 
   const handleForgotPassword = async () => {
     if (!email) {
-      toast({ title: 'Enter your email', description: 'Please enter your email address first.', variant: 'destructive' });
+      toast({ 
+        title: 'Email required', 
+        description: 'Please enter your email to reset your password.', 
+        variant: 'destructive' 
+      });
       return;
     }
     setLoading(true);
@@ -125,232 +116,241 @@ const Auth = () => {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setLoading(false);
+    
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
       toast({ 
-        title: 'Check your email!', 
-        description: 'We have sent a password reset link to your email address.' 
+        title: 'Reset link sent', 
+        description: 'Check your inbox for the password reset link.' 
       });
     }
   };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
+      if (event === 'SIGNED_IN' && session) {
+        await handleRouting(session.user.id);
+      } else if (event === 'PASSWORD_RECOVERY') {
         navigate('/reset-password');
-      } else if (event === 'SIGNED_IN' && session) {
-        // After email confirmation, the user is signed in.
-        // Check if they have a profile to decide where to send them.
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (profile?.is_admin) {
-          navigate('/admin');
-        } else {
-          const p = localStorage.getItem('et_profile');
-          if (p) {
-            navigate('/dashboard');
-          } else {
-            navigate('/onboarding');
-          }
-        }
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const handleResendEmail = async () => {
-    if (!email) {
-      toast({ title: 'Enter your email', description: 'Please enter your email address first.', variant: 'destructive' });
-      return;
-    }
-    setLoading(true);
-    
-    // Recovery (forgot password) doesn't use .resend(), it just calls the initial method again
-    const { error } = otpType === 'signup' 
-      ? await supabase.auth.resend({ type: 'signup', email })
-      : await supabase.auth.resetPasswordForEmail(email);
-
-    setLoading(false);
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Email resent', description: 'A new verification link has been sent to your email.' });
-    }
-  };
+  if (view === 'check-email') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0A192F] px-4">
+        <Card className="w-full max-w-md bg-[#112240] border-white/10 text-white shadow-2xl animate-in fade-in zoom-in duration-300">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-16 h-16 bg-orange-500/10 rounded-full flex items-center justify-center mb-4">
+              <Mail className="text-orange-500" size={32} />
+            </div>
+            <CardTitle className="text-2xl font-bold">Check your email</CardTitle>
+            <CardDescription className="text-slate-400">
+              We've sent a temporary verification link to <span className="text-white font-medium">{email}</span>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-sm text-slate-400">
+              Click the link in the email to confirm your account. If you don't see it, check your spam folder.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button 
+              variant="outline" 
+              className="w-full border-white/10 hover:bg-white/5"
+              onClick={() => setView('login')}
+            >
+              Back to Login
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0A1628] px-4 relative">
-      {showOtpInput && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#0A1628]/95 backdrop-blur-sm animate-in fade-in duration-300">
-          <Card className="w-full max-w-md bg-[#112236] border-white/10 text-[#F0F4FF] shadow-2xl">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Confirm Your <span className="text-[#FF6B35]">Email</span>
-              </CardTitle>
-              <CardDescription className="text-[#8A9BB5]">
-                We have sent a verification link to <strong>{email}</strong>. Please check your inbox and click the link to continue.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-4">
-              <div className="bg-[#0A1628] p-6 rounded-lg border border-white/5 text-center">
-                <p className="text-[#8A9BB5]">If you don't see the email, please check your spam folder.</p>
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-3">
-              <Button
-                type="button"
-                onClick={() => setShowOtpInput(false)}
-                className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white h-12 font-bold"
-              >
-                Back to Login
-              </Button>
-              <div className="flex justify-center w-full mt-2">
-                <button
-                  type="button"
-                  onClick={handleResendEmail}
-                  className="text-sm text-[#FFB347] hover:underline"
-                >
-                  Resend verification email
-                </button>
-              </div>
-            </CardFooter>
-          </Card>
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#0A192F]">
+      {/* Left side - Branding/Info */}
+      <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-orange-600 to-orange-800 p-12 flex-col justify-between text-white">
+        <div>
+          <div className="flex items-center gap-2 mb-8">
+            <div className="bg-white p-1.5 rounded-lg">
+              <Shield className="text-orange-600" size={24} />
+            </div>
+            <span className="text-2xl font-bold tracking-tight">ET Concierge</span>
+          </div>
+          <h1 className="text-5xl font-extrabold leading-tight mb-6">
+            Master the Markets with <span className="text-orange-200">AI Intelligence.</span>
+          </h1>
+          <p className="text-xl text-orange-100/80 max-w-md">
+            Your professional companion for real-time market data, personalized insights, and wealth growth strategies.
+          </p>
         </div>
-      )}
+        
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center">
+              <ArrowRight className="text-white" size={20} />
+            </div>
+            <p className="font-medium">Real-time Yahoo Finance Data Integration</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center">
+              <ArrowRight className="text-white" size={20} />
+            </div>
+            <p className="font-medium">Personalized AI Financial Briefings</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center">
+              <ArrowRight className="text-white" size={20} />
+            </div>
+            <p className="font-medium">Automated Portfolio Risk Assessment</p>
+          </div>
+        </div>
+      </div>
 
-      <Card className="w-full max-w-md bg-[#112236] border-white/10 text-[#F0F4FF]">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
-            <span className="text-[#FF6B35]">ET</span> Concierge
-          </CardTitle>
-          <CardDescription className="text-[#8A9BB5]">
-            Your personal guide to everything ET
-          </CardDescription>
-        </CardHeader>
-        <Tabs defaultValue="login" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-[#0A1628]">
-            <TabsTrigger value="login" className="data-[state=active]:bg-[#FF6B35] data-[state=active]:text-white">
-              Login
-            </TabsTrigger>
-            <TabsTrigger value="signup" className="data-[state=active]:bg-[#FF6B35] data-[state=active]:text-white">
-              Sign Up
-            </TabsTrigger>
-          </TabsList>
+      {/* Right side - Auth Form */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-12 lg:p-16">
+        <Card className="w-full max-w-md bg-[#112240] border-white/10 text-white shadow-2xl">
+          <CardHeader className="space-y-1">
+            <div className="md:hidden flex items-center gap-2 mb-4">
+              <Shield className="text-orange-500" size={24} />
+              <span className="text-xl font-bold">ET Concierge</span>
+            </div>
+            <CardTitle className="text-3xl font-bold tracking-tight">Welcome</CardTitle>
+            <CardDescription className="text-slate-400">
+              Sign in or create an account to start your financial journey.
+            </CardDescription>
+          </CardHeader>
+          
+          <Tabs defaultValue="login" className="w-full" onValueChange={(v) => setView(v as any)}>
+            <TabsList className="grid w-full grid-cols-2 bg-[#0A192F] p-1 mb-6">
+              <TabsTrigger value="login" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">
+                Login
+              </TabsTrigger>
+              <TabsTrigger value="signup" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">
+                Register
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="login">
-            <form onSubmit={handleLogin}>
-              <CardContent className="space-y-4 pt-4">
+            <TabsContent value="login">
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email" className="text-[#8A9BB5]">Email</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="bg-[#0A1628] border-white/10 text-[#F0F4FF] focus:border-[#FF6B35]"
-                  />
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 text-slate-500" size={18} />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="bg-[#0A192F] border-white/10 pl-10 focus:border-orange-500 h-12"
+                      required
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="login-password" className="text-[#8A9BB5]">Password</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="bg-[#0A1628] border-white/10 text-[#F0F4FF] focus:border-[#FF6B35]"
-                  />
+                  <div className="flex justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    <button 
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-xs text-orange-500 hover:text-orange-400 transition-colors"
+                    >
+                      Forgot?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 text-slate-500" size={18} />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="bg-[#0A192F] border-white/10 pl-10 focus:border-orange-500 h-12"
+                      required
+                    />
+                  </div>
                 </div>
-              </CardContent>
-              <CardFooter className="flex flex-col gap-3">
-                <Button
-                  type="submit"
+                <Button 
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold h-12 mt-2" 
                   disabled={loading}
-                  className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
                 >
-                  {loading ? 'Logging in...' : 'Login'}
+                  {loading ? <Loader2 className="animate-spin mr-2" /> : "Sign In"}
                 </Button>
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-sm text-[#FFB347] hover:underline"
-                >
-                  Forgot password?
-                </button>
-              </CardFooter>
-            </form>
-          </TabsContent>
+              </form>
+            </TabsContent>
 
-          <TabsContent value="signup">
-            <form onSubmit={handleSignup}>
-              <CardContent className="space-y-4 pt-4">
+            <TabsContent value="signup">
+              <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name" className="text-[#8A9BB5]">Display Name</Label>
-                  <Input
-                    id="signup-name"
-                    type="text"
-                    placeholder="Your name"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    required
-                    className="bg-[#0A1628] border-white/10 text-[#F0F4FF] focus:border-[#FF6B35]"
-                  />
+                  <Label htmlFor="signup-name">Full Name</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 text-slate-500" size={18} />
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      placeholder="John Doe"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      className="bg-[#0A192F] border-white/10 pl-10 focus:border-orange-500 h-12"
+                      required
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email" className="text-[#8A9BB5]">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="bg-[#0A1628] border-white/10 text-[#F0F4FF] focus:border-[#FF6B35]"
-                  />
+                  <Label htmlFor="signup-email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 text-slate-500" size={18} />
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="bg-[#0A192F] border-white/10 pl-10 focus:border-orange-500 h-12"
+                      required
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password" className="text-[#8A9BB5]">Password</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="Min 6 characters"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    className="bg-[#0A1628] border-white/10 text-[#F0F4FF] focus:border-[#FF6B35]"
-                  />
+                  <Label htmlFor="signup-password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 text-slate-500" size={18} />
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      placeholder="Create a strong password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="bg-[#0A192F] border-white/10 pl-10 focus:border-orange-500 h-12"
+                      required
+                      minLength={6}
+                    />
+                  </div>
                 </div>
-              </CardContent>
-              <CardFooter className="flex flex-col gap-3">
-                <Button
-                  type="submit"
+                <Button 
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold h-12 mt-2" 
                   disabled={loading}
-                  className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
                 >
-                  {loading ? 'Creating account...' : 'Create Account'}
+                  {loading ? <Loader2 className="animate-spin mr-2" /> : "Create Account"}
                 </Button>
-                <button
-                  type="button"
-                  onClick={handleResendEmail}
-                  className="text-sm text-[#FFB347] hover:underline"
-                >
-                  Resend verification email?
-                </button>
-              </CardFooter>
-            </form>
-          </TabsContent>
-        </Tabs>
-      </Card>
+              </form>
+            </TabsContent>
+          </Tabs>
+          
+          <CardFooter className="px-0 pt-6">
+            <p className="text-xs text-center w-full text-slate-500 leading-relaxed">
+              By clicking continue, you agree to our <span className="text-slate-400 hover:text-white cursor-pointer underline">Terms of Service</span> and <span className="text-slate-400 hover:text-white cursor-pointer underline">Privacy Policy</span>.
+            </p>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 };

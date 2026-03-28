@@ -1359,7 +1359,6 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
             )}
           </div>
           <div className="modal-actions">
-            <button className="btn-secondary" onClick={clearProfile}>Clear Profile</button>
             <button className="btn-secondary" onClick={async () => {
               await signOut();
               setIsSettingsOpen(false);
@@ -1552,8 +1551,6 @@ const DashboardIndex = ({ defaultSection }: IndexProps) => {
                     </ul>
                   </div>
                 )}
-
-                <button onClick={clearProfile} className="mt-6 text-sm font-medium text-blue-400 transition-colors hover:text-blue-300">↻ Reset Profile</button>
               </div>
 
               {/* Analysis Graph */}

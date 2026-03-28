@@ -32,24 +32,24 @@ const Auth = () => {
     }
 
     if (data.user) {
-      // Check if user is admin via profile
+      // Check if user has a profile and if they are an admin
       const { data: profile } = await supabase
         .from('profiles')
-        .select('is_admin')
+        .select('is_admin, persona_label')
         .eq('user_id', data.user.id)
-        .single();
+        .maybeSingle();
 
       setLoading(false);
       
       if (profile?.is_admin) {
         navigate('/admin');
+      } else if (profile?.persona_label) {
+        // If they have a persona_label, they have completed onboarding
+        localStorage.setItem('et_profile', JSON.stringify(profile));
+        navigate('/dashboard');
       } else {
-        const p = localStorage.getItem('et_profile');
-        if (p) {
-          navigate('/dashboard');
-        } else {
-          navigate('/onboarding');
-        }
+        // No profile or persona_label means they need to onboard
+        navigate('/onboarding');
       }
     }
   };
@@ -57,17 +57,31 @@ const Auth = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    
+    const redirectTo = window.location.hostname === 'localhost' 
+      ? `${window.location.origin}/auth`
+      : 'https://et-gen-concierge.vercel.app/auth';
+
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { display_name: displayName },
-        emailRedirectTo: `${window.location.origin}/auth`,
+        emailRedirectTo: redirectTo,
       },
     });
+    
     setLoading(false);
+    
     if (error) {
       toast({ title: 'Signup failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+
+    // If session exists immediately (email confirmation disabled in Supabase)
+    if (data.session) {
+      toast({ title: 'Account created!', description: 'Welcome to ET Concierge.' });
+      navigate('/onboarding');
     } else {
       setOtpType('signup');
       setShowOtpInput(true);

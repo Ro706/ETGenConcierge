@@ -62,7 +62,7 @@ const Auth = () => {
       password,
       options: {
         data: { display_name: displayName },
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: 'https://et-gen-concierge.vercel.app/',
       },
     });
     setLoading(false);
@@ -71,7 +71,7 @@ const Auth = () => {
     } else {
       setOtpType('signup');
       setShowOtpInput(true);
-      toast({ title: 'Check your email!', description: 'We have sent you a 6-digit OTP code to verify your account.' });
+      toast({ title: 'Check your email!', description: 'We have sent you a confirmation link to verify your account.' });
     }
   };
 
@@ -108,7 +108,7 @@ const Auth = () => {
     }
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: 'https://et-gen-concierge.vercel.app/reset-password',
     });
     setLoading(false);
     if (error) {
@@ -147,7 +147,7 @@ const Auth = () => {
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'OTP resent', description: 'A new OTP code has been sent to your email.' });
+      toast({ title: 'Email resent', description: 'A new verification link has been sent to your email.' });
     }
   };
 
@@ -158,57 +158,35 @@ const Auth = () => {
           <Card className="w-full max-w-md bg-[#112236] border-white/10 text-[#F0F4FF] shadow-2xl">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Verify <span className="text-[#FF6B35]">OTP</span>
+                Confirm Your <span className="text-[#FF6B35]">Email</span>
               </CardTitle>
               <CardDescription className="text-[#8A9BB5]">
-                Enter the 6-digit code sent to <strong>{email}</strong>
+                We have sent a verification link to <strong>{email}</strong>. Please check your inbox and click the link to continue.
               </CardDescription>
             </CardHeader>
-            <form onSubmit={handleVerifyOtp}>
-              <CardContent className="space-y-6 pt-4">
-                <div className="space-y-4">
-                  <Label htmlFor="otp" className="text-[#8A9BB5] block text-center">One-Time Password</Label>
-                  <Input
-                    id="otp"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    pattern="\d{6}"
-                    maxLength={6}
-                    placeholder="000000"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                    required
-                    className="bg-[#0A1628] border-white/10 text-[#F0F4FF] focus:border-[#FF6B35] text-center text-3xl tracking-[0.5em] h-16 font-mono"
-                  />
-                </div>
-              </CardContent>
-              <CardFooter className="flex flex-col gap-3">
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white h-12 font-bold"
+            <CardContent className="space-y-6 pt-4">
+              <div className="bg-[#0A1628] p-6 rounded-lg border border-white/5 text-center">
+                <p className="text-[#8A9BB5]">If you don't see the email, please check your spam folder.</p>
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-3">
+              <Button
+                type="button"
+                onClick={() => setShowOtpInput(false)}
+                className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white h-12 font-bold"
+              >
+                Back to Login
+              </Button>
+              <div className="flex justify-center w-full mt-2">
+                <button
+                  type="button"
+                  onClick={handleResendEmail}
+                  className="text-sm text-[#FFB347] hover:underline"
                 >
-                  {loading ? 'Verifying...' : 'Verify & Continue'}
-                </Button>
-                <div className="flex justify-between w-full mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowOtpInput(false)}
-                    className="text-sm text-[#8A9BB5] hover:text-[#F0F4FF] transition-colors"
-                  >
-                    ← Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleResendEmail}
-                    className="text-sm text-[#FFB347] hover:underline"
-                  >
-                    Resend OTP
-                  </button>
-                </div>
-              </CardFooter>
-            </form>
+                  Resend verification email
+                </button>
+              </div>
+            </CardFooter>
           </Card>
         </div>
       )}

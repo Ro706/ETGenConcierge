@@ -62,7 +62,7 @@ const Auth = () => {
       password,
       options: {
         data: { display_name: displayName },
-        emailRedirectTo: 'https://et-gen-concierge.vercel.app/',
+        emailRedirectTo: `${window.location.origin}/`,
       },
     });
     setLoading(false);
@@ -108,7 +108,7 @@ const Auth = () => {
     }
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://et-gen-concierge.vercel.app/reset-password',
+      redirectTo: `${window.location.origin}/reset-password`,
     });
     setLoading(false);
     if (error) {

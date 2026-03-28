@@ -59,7 +59,8 @@ const AdminLogin = () => {
         email: "ETadminAi@gamil.com",
         password: "Admin123",
         options: {
-          data: { display_name: "ET Admin" }
+          data: { display_name: "ET Admin" },
+          emailRedirectTo: window.location.origin,
         }
       });
       
@@ -107,7 +108,10 @@ const AdminLogin = () => {
         const { data: signUpData, error: signupError } = await supabase.auth.signUp({
           email: adminEmail,
           password: adminPassword,
-          options: { data: { display_name: "ET Admin" } }
+          options: { 
+            data: { display_name: "ET Admin" },
+            emailRedirectTo: window.location.origin
+          }
         });
 
         if (signupError) {

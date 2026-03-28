@@ -62,7 +62,7 @@ const Auth = () => {
       password,
       options: {
         data: { display_name: displayName },
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: `${window.location.origin}/auth`,
       },
     });
     setLoading(false);
@@ -125,6 +125,25 @@ const Auth = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         navigate('/reset-password');
+      } else if (event === 'SIGNED_IN' && session) {
+        // After email confirmation, the user is signed in.
+        // Check if they have a profile to decide where to send them.
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (profile?.is_admin) {
+          navigate('/admin');
+        } else {
+          const p = localStorage.getItem('et_profile');
+          if (p) {
+            navigate('/dashboard');
+          } else {
+            navigate('/onboarding');
+          }
+        }
       }
     });
 

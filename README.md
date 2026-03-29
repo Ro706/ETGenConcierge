@@ -1,4 +1,4 @@
-# 🤖 ET Concierge - Your Professional AI Financial Companion
+#  ET Concierge - Your Professional AI Financial Companion
 
 ET Concierge is a production-grade, AI-driven financial dashboard designed to empower investors with personalized market intelligence, real-time analytics, and expert wealth management tools. Built on the foundation of The Economic Times ecosystem, it transforms complex market data into actionable personal insights.
 
